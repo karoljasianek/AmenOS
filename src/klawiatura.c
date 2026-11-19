@@ -46,6 +46,10 @@ int kbd_poll(void) {
         case 0x50: return KEY_DOWN;
         case 0x4B: return KEY_LEFT;
         case 0x4D: return KEY_RIGHT;
+        case 0x49: return KEY_PGUP;
+        case 0x51: return KEY_PGDN;
+        case 0x47: return KEY_HOME;
+        case 0x4F: return KEY_END;
         case 0x1C: return KEY_ENTER;
         case 0x38: altgr = 1; return -1;
         case 0xB8: altgr = 0; return -1;

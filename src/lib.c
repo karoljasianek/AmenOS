@@ -102,3 +102,9 @@ int k_utf8_put(u32 c, char *o) {
     o[0] = (char)(0xE0 | (c >> 12)); o[1] = (char)(0x80 | ((c >> 6) & 0x3F)); o[2] = (char)(0x80 | (c & 0x3F));
     return 3;
 }
+
+int k_memcmp(const void *a, const void *b, u32 n) {
+    const u8 *x = a, *y = b;
+    for (u32 i = 0; i < n; i++) if (x[i] != y[i]) return x[i] - y[i];
+    return 0;
+}

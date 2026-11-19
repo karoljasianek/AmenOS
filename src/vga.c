@@ -1,6 +1,7 @@
 /* AmenOS - sterownik ekranu tekstowego VGA 80x25 z polskimi znakami */
 #include "kernel.h"
 #include "font_pl.h"
+#include "znaki_dane.h"
 
 static volatile u16 *const VGA = (volatile u16 *)0xB8000;
 static int cx, cy;
@@ -104,6 +105,7 @@ u8 vga_map(u32 c) {
     case 0x2022: return 0x07;  /* • */
     case 0x00B7: return 0xFA;  /* · */
     case 0x2192: return 0x1A;  /* → */
+    case 0x2190: return 0x1B;  /* ← */
     case 0x2191: return 0x18;  /* ↑ */
     case 0x2193: return 0x19;  /* ↓ */
     case 0x266A: return 0x0D;  /* ♪ */
@@ -116,7 +118,11 @@ u8 vga_map(u32 c) {
     case 0x2014: case 0x2013: return '-';
     case 0x201E: case 0x201D: case 0x201C: return '"';
     case 0x00B0: return 0xF8;  /* ° */
+    case 0x2026: return '.';   /* … */
+    case 0x2018: case 0x2019: case 0x201A: return '\'';
+    case 0x20AC: return 'E';   /* € */
     }
+    if (c >= 0xA0 && c < 0x180) return lacinskie_vga[c - 0xA0];
     return '?';
 }
 

@@ -2,7 +2,7 @@
 #ifndef AMENOS_KERNEL_H
 #define AMENOS_KERNEL_H
 
-#define AMENOS_WERSJA "1.0"
+#define AMENOS_WERSJA "1.4"
 
 typedef unsigned char  u8;
 typedef unsigned short u16;
@@ -12,6 +12,8 @@ typedef unsigned int   u32;
 static inline void outb(u16 port, u8 val) { __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port)); }
 static inline void outw(u16 port, u16 val) { __asm__ volatile("outw %0, %1" : : "a"(val), "Nd"(port)); }
 static inline u8 inb(u16 port) { u8 v; __asm__ volatile("inb %1, %0" : "=a"(v) : "Nd"(port)); return v; }
+static inline void outl(u16 port, u32 val) { __asm__ volatile("outl %0, %1" : : "a"(val), "Nd"(port)); }
+static inline u32 inl(u16 port) { u32 v; __asm__ volatile("inl %1, %0" : "=a"(v) : "Nd"(port)); return v; }
 static inline void io_wait(void) { outb(0x80, 0); }
 
 /* ---------- biblioteka (lib.c) ---------- */
@@ -26,6 +28,7 @@ void k_fold_pl(char *dst, const char *src, u32 max);   /* małe litery, bez ogon
 u32  k_utf8_next(const char **s);                      /* dekoduje jeden znak UTF-8 */
 u32  k_utf8_len(const char *s);                        /* liczba znaków (nie bajtów) */
 int  k_utf8_put(u32 c, char *out);                     /* koduje znak, zwraca liczbę bajtów */
+int  k_memcmp(const void *a, const void *b, u32 n);
 
 /* ---------- ekran (vga.c) ---------- */
 enum {
@@ -60,6 +63,10 @@ void ksprintf(char *out, u32 max, const char *fmt, ...);
 #define KEY_DOWN   0x1002
 #define KEY_LEFT   0x1003
 #define KEY_RIGHT  0x1004
+#define KEY_PGUP   0x1005
+#define KEY_PGDN   0x1006
+#define KEY_HOME   0x1007
+#define KEY_END    0x1008
 #define KEY_ESC    27
 #define KEY_ENTER  '\n'
 #define KEY_BKSP   '\b'
@@ -113,6 +120,38 @@ extern const char *dni_tyg_wielk[7];/* "Niedziela" ... */
 extern const char *mies_dop[13];    /* "stycznia" ... */
 extern const char *mies_mian[13];   /* "Styczeń" ... */
 extern const char *mies_mian_wielk[13]; /* "STYCZEŃ" ... */
+
+/* ---------- karta sieciowa (e1000.c) ---------- */
+extern u8 karta_mac[6];
+extern int karta_jest;
+int  e1000_init(void);
+int  e1000_lacze(void);
+void e1000_wyslij(const void *dane, u32 dl);
+int  e1000_odbierz(u8 *wy);              /* 0 = brak, -1 = ramka błędna, >0 = długość */
+const char *karta_nazwa(void);
+
+/* ---------- sieć (siec.c) ---------- */
+extern u32 moje_ip, maska, brama, dns_ip, dns_wlasny;
+extern int siec_gotowa;
+int  siec_start(void);                   /* 0 = OK, <0 = błąd (siec_blad) */
+const char *siec_blad(int kod);
+void siec_odbieraj(void);
+u32  losowa(void);
+void ip_tekst(u32 ip, char *b);
+int  ip_z_tekstu(const char *s, u32 *ip);
+int  dns_zapytaj(const char *nazwa, u32 *ip);
+int  ping(u32 cel, u32 *ms);
+int  tcp_polacz(u32 ip, u16 port, u8 *bufor, u32 rozmiar);
+int  tcp_wyslij(const void *dane, u32 dl);
+u32  tcp_odebrano(void);
+int  tcp_zakonczone(void);
+u32  tcp_cisza_ms(void);
+void tcp_zamknij(void);
+
+/* ---------- przeglądarka (przegladarka.c) ---------- */
+void przegladarka(const char *adres);
+void cmd_siec(char *p);
+void cmd_ping(char *arg);
 
 /* ---------- powłoka (powloka.c) ---------- */
 void powloka(u32 mem_kb);

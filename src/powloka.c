@@ -1172,6 +1172,8 @@ static void cmd_pomoc(void) {
         { "spowiedz",             "spowiedź święta przy komputerze" },
         { "komunia",              "Komunia święta" },
         { "muzyka [N|wszystko]",  "muzyka mszalna z głośniczka komputera" },
+        { "www [adres]",          "przeglądarka internetowa" },
+        { "siec / ping ADRES",    "stan sieci (adres IP) / sprawdzenie połączenia" },
         { "zegar",                "duży zegar z obchodem dnia" },
         { "parafia <nazwa>",      "ustaw nazwę parafii" },
         { "czas / strefa N",      "data i godzina / przesunięcie strefy" },
@@ -1257,6 +1259,9 @@ void powloka(u32 mem_kb) {
         else if (!k_strcmp(f, "msze") || !k_strcmp(f, "msza")) cmd_msze(p);
         else if (!k_strcmp(f, "ogloszenia")) cmd_ogloszenia(p);
         else if (!k_strcmp(f, "zegar")) cmd_zegar();
+        else if (!k_strcmp(f, "www") || !k_strcmp(f, "przegladarka") || !k_strcmp(f, "internet")) { while (*p == ' ') p++; przegladarka(p); }
+        else if (!k_strcmp(f, "siec")) cmd_siec(p);
+        else if (!k_strcmp(f, "ping")) cmd_ping(k_token(&p));
         else if (!k_strcmp(f, "spowiedz")) cmd_spowiedz();
         else if (!k_strcmp(f, "komunia")) cmd_komunia();
         else if (!k_strcmp(f, "muzyka")) cmd_muzyka(k_token(&p));
