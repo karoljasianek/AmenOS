@@ -1,0 +1,121 @@
+/* AmenOS - wspólny nagłówek jądra */
+#ifndef AMENOS_KERNEL_H
+#define AMENOS_KERNEL_H
+
+#define AMENOS_WERSJA "1.0"
+
+typedef unsigned char  u8;
+typedef unsigned short u16;
+typedef unsigned int   u32;
+
+/* ---------- porty we/wy ---------- */
+static inline void outb(u16 port, u8 val) { __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port)); }
+static inline void outw(u16 port, u16 val) { __asm__ volatile("outw %0, %1" : : "a"(val), "Nd"(port)); }
+static inline u8 inb(u16 port) { u8 v; __asm__ volatile("inb %1, %0" : "=a"(v) : "Nd"(port)); return v; }
+static inline void io_wait(void) { outb(0x80, 0); }
+
+/* ---------- biblioteka (lib.c) ---------- */
+void *memset(void *dst, int c, u32 n);
+void *memcpy(void *dst, const void *src, u32 n);
+u32  k_strlen(const char *s);
+int  k_strcmp(const char *a, const char *b);
+void k_strncpy(char *dst, const char *src, u32 max);   /* zawsze kończy zerem */
+int  k_atoi(const char *s, int *ok);
+char *k_token(char **p);                               /* kolejne słowo, NULL gdy koniec */
+void k_fold_pl(char *dst, const char *src, u32 max);   /* małe litery, bez ogonków */
+u32  k_utf8_next(const char **s);                      /* dekoduje jeden znak UTF-8 */
+u32  k_utf8_len(const char *s);                        /* liczba znaków (nie bajtów) */
+int  k_utf8_put(u32 c, char *out);                     /* koduje znak, zwraca liczbę bajtów */
+
+/* ---------- ekran (vga.c) ---------- */
+enum {
+    CZARNY = 0, NIEBIESKI, ZIELONY, TURKUSOWY, CZERWONY, FIOLET, BRAZOWY, SZARY,
+    CIEMNOSZARY, JASNONIEBIESKI, JASNOZIELONY, JASNOTURKUSOWY, JASNOCZERWONY,
+    ROZOWY, ZOLTY, BIALY
+};
+#define VGA_W 80
+#define VGA_H 25
+#define ATTR(fg, bg) ((u8)(((bg) << 4) | (fg)))
+
+void vga_init(void);
+void vga_clear(void);
+void vga_color(u8 fg, u8 bg);
+u8   vga_attr(void);
+void vga_goto(int x, int y);
+int  vga_x(void);
+int  vga_y(void);
+void vga_cursor(int on);
+void vga_putc(u32 codepoint);
+void vga_puts(const char *s);
+void vga_glyph_at(int x, int y, u8 glyph, u8 attr);
+void vga_puts_at(int x, int y, const char *s, u8 attr);
+void vga_fill(int x, int y, int w, int h, u8 glyph, u8 attr);
+void vga_backspace(void);
+u8   vga_map(u32 codepoint);
+void kprintf(const char *fmt, ...);
+void ksprintf(char *out, u32 max, const char *fmt, ...);
+
+/* ---------- klawiatura (klawiatura.c) ---------- */
+#define KEY_UP     0x1001
+#define KEY_DOWN   0x1002
+#define KEY_LEFT   0x1003
+#define KEY_RIGHT  0x1004
+#define KEY_ESC    27
+#define KEY_ENTER  '\n'
+#define KEY_BKSP   '\b'
+#define KEY_F1     0x1011
+#define KEY_F10    0x1012
+
+int  kbd_poll(void);                    /* -1 gdy brak klawisza */
+int  kbd_getkey(void);                  /* czeka na klawisz */
+int  kbd_readline(char *buf, int max);  /* linia z historią, UTF-8; -1 = przerwano (F10) */
+extern int kbd_historia;
+
+/* ---------- czas i dźwięk (dzwiek.c) ---------- */
+void czasomierz_init(void);
+u32  zegar_ms(void);
+void czekaj_ms(u32 ms);
+void glosnik_ton(u32 hz);
+void glosnik_cisza(void);
+
+/* ---------- zegar (rtc.c) ---------- */
+typedef struct { int rok, mies, dzien, godz, min, sek; } czas_t;
+extern int strefa_godzin;
+void rtc_czytaj(czas_t *c);             /* z uwzględnieniem strefy */
+void czekaj_sekundy(int n);             /* przerywane klawiszem */
+
+/* ---------- kalendarz liturgiczny (liturgia.c) ---------- */
+enum { KOL_ZIELONY, KOL_FIOLETOWY, KOL_BIALY, KOL_CZERWONY, KOL_ROZOWY };
+
+typedef struct {
+    char nazwa[96];        /* główny obchód dnia */
+    char uwaga[96];        /* wspomnienie / informacja dodatkowa */
+    const char *okres;     /* okres liturgiczny */
+    int kolor;             /* KOL_* */
+    int ranga;             /* 1 = najwyższa ... 7 = dzień powszedni */
+    char cykl_niedz;       /* 'A' / 'B' / 'C' */
+    int  cykl_powsz;       /* 1 / 2 */
+} dzien_lit_t;
+
+int  dni_od_epoki(int r, int m, int d);           /* 1970-01-01 = 0 */
+void data_z_dni(int z, int *r, int *m, int *d);
+int  dzien_tygodnia(int dni);                      /* 0 = niedziela */
+int  dni_w_miesiacu(int r, int m);
+int  wielkanoc(int rok);                           /* w dniach od epoki */
+int  adwent1(int rok);
+void liturgia(int r, int m, int d, dzien_lit_t *out);
+const char *kolor_nazwa(int k);
+u8   kolor_vga(int k);
+u8   kolor_tekst(int k);
+
+extern const char *dni_tyg[7];      /* "niedziela" ... */
+extern const char *dni_tyg_wielk[7];/* "Niedziela" ... */
+extern const char *mies_dop[13];    /* "stycznia" ... */
+extern const char *mies_mian[13];   /* "Styczeń" ... */
+extern const char *mies_mian_wielk[13]; /* "STYCZEŃ" ... */
+
+/* ---------- powłoka (powloka.c) ---------- */
+void powloka(u32 mem_kb);
+void ekran_powitalny(void);
+
+#endif
