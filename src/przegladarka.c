@@ -2,14 +2,12 @@
  * HTTP/1.0, HTML z linkami, przekierowania, historia; strony HTTPS przez serwis FrogFind. */
 #include "kernel.h"
 #include "znaki_dane.h"
+#include "www.h"
 
 #define SZER     78                  /* szerokość tekstu strony */
 #define WIDOK    22                  /* wiersze treści na ekranie (2..23) */
 #define MAXW     6000
 #define MAXL     700
-#define ADR      400
-#define START    "about:start"
-#define FROGFIND "http://frogfind.com"
 
 /* ---------- dane strony ---------- */
 
@@ -29,14 +27,14 @@ static int hist_n;
 
 /* ---------- napisy ---------- */
 
-static char mala(char c) { return (c >= 'A' && c <= 'Z') ? (char)(c + 32) : c; }
+char mala(char c) { return (c >= 'A' && c <= 'Z') ? (char)(c + 32) : c; }
 
-static int zaczyna(const char *s, const char *p) {
+int zaczyna(const char *s, const char *p) {
     while (*p) if (mala(*s++) != mala(*p++)) return 0;
     return 1;
 }
 
-static const u8 *szukaj_ci(const u8 *s, const u8 *k, const char *wzor) {
+const u8 *szukaj_ci(const u8 *s, const u8 *k, const char *wzor) {
     u32 n = k_strlen(wzor);
     for (; s + n <= k; s++) {
         u32 i = 0;
@@ -46,13 +44,13 @@ static const u8 *szukaj_ci(const u8 *s, const u8 *k, const char *wzor) {
     return 0;
 }
 
-static void dopisz(char *d, u32 max, const char *s) {
+void dopisz(char *d, u32 max, const char *s) {
     u32 n = k_strlen(d);
     while (*s && n + 1 < max) d[n++] = *s++;
     d[n] = 0;
 }
 
-static void url_koduj(const char *s, char *o, u32 max) {
+void url_koduj(const char *s, char *o, u32 max) {
     u32 n = 0;
     for (; *s && n + 4 < max; s++) {
         u8 c = (u8)*s;
@@ -65,7 +63,7 @@ static void url_koduj(const char *s, char *o, u32 max) {
 }
 
 /* strony HTTPS otwieramy przez FrogFind, który zamienia je na prosty HTML */
-static void przez_frogfind(const char *https, char *o, u32 max) {
+void przez_frogfind(const char *https, char *o, u32 max) {
     char kod[ADR];
     url_koduj(https, kod, sizeof kod);
     ksprintf(o, max, FROGFIND "/read.php?a=%s", kod);
@@ -101,7 +99,7 @@ static int url_rozbierz(const char *u, url_t *o) {
 }
 
 /* zamienia link (względny lub bezwzględny) na pełny adres http:// */
-static int url_pelny(const char *baza, const char *href, char *o, u32 max) {
+int url_pelny(const char *baza, const char *href, char *o, u32 max) {
     while (*href == ' ' || *href == '\n' || *href == '\t') href++;
     if (!*href || *href == '#' || zaczyna(href, "javascript:") || zaczyna(href, "mailto:") || zaczyna(href, "tel:"))
         return 0;
@@ -262,10 +260,9 @@ static void tekst(const char *s) { while (*s) znak_tekstu(k_utf8_next(&s)); }
 
 /* ---------- dekodowanie znaków i encji ---------- */
 
-enum { UTF8, ISO2, CP1250, LATIN1 };
-static int kodowanie;
+int kodowanie;
 
-static u32 znak_z(const u8 **pp, const u8 *k) {
+u32 znak_z(const u8 **pp, const u8 *k) {
     const u8 *p = *pp;
     u8 c = *p;
     if (c < 0x80) { *pp = p + 1; return c; }
@@ -290,7 +287,7 @@ static const struct { const char *n; u16 cp; } encje[] = {
     { "uuml", 0xFC }, { "ouml", 0xF6 }, { "auml", 0xE4 }, { "szlig", 0xDF }, { "shy", 0 }, { "zwnj", 0 },
 };
 
-static u32 encja(const u8 **pp, const u8 *k) {
+u32 encja(const u8 **pp, const u8 *k) {
     const u8 *p = *pp + 1;
     char n[12]; int i = 0;
     while (p < k && *p != ';' && i < 10 && *p != '&' && *p != '<' && *p != ' ') n[i++] = (char)*p++;
@@ -316,7 +313,7 @@ static u32 encja(const u8 **pp, const u8 *k) {
 }
 
 /* wartość atrybutu znacznika (z rozwiniętymi encjami), np. href */
-static int atrybut(const u8 *s, const u8 *e, const char *nazwa, char *o, u32 max) {
+int atrybut(const u8 *s, const u8 *e, const char *nazwa, char *o, u32 max) {
     u32 n = k_strlen(nazwa);
     for (const u8 *p = s; p + n < e; p++) {
         if (p > s && p[-1] != ' ' && p[-1] != '\t' && p[-1] != '\n' && p[-1] != '\r' && p[-1] != '"' && p[-1] != '\'') continue;
@@ -507,7 +504,7 @@ static void renderuj_napis(const char *html) {
 
 /* ---------- strony wbudowane ---------- */
 
-static const char *STRONA_STARTOWA =
+const char *STRONA_STARTOWA =
     "<title>AmenOS - strona startowa</title>"
     "<h1>Przeglądarka AmenOS</h1>"
     "<p>Naciśnij <b>G</b>, aby wpisać adres strony albo szukane słowa (wyszukiwarka FrogFind).</p>"
@@ -574,7 +571,7 @@ static u32 chunked_dekoduj(u8 *b, u32 dl) {
     return w;
 }
 
-static int ustal_kodowanie(const char *typ, const u8 *cialo, u32 dl) {
+int ustal_kodowanie(const char *typ, const u8 *cialo, u32 dl) {
     char cs[24] = "";
     const char *c = 0;
     for (const char *p = typ; *p; p++) if (zaczyna(p, "charset=")) { c = p + 8; break; }
@@ -594,92 +591,136 @@ static int ustal_kodowanie(const char *typ, const u8 *cialo, u32 dl) {
     return UTF8;
 }
 
-/* pobiera stronę (z przekierowaniami) i ją składa; zwraca 1, gdy coś pokazano */
-static int pobierz_i_pokaz(const char *url_we) {
-    char url[ADR], tmp[ADR], msg[120];
-    k_strncpy(url, url_we, sizeof url);
+/* ---------- wspólne pobieranie HTTP (także dla przeglądarki graficznej) ---------- */
 
+static int pob_zajete;
+
+int www_pobierz(const char *url_we, u8 *bufor, u32 rozmiar, www_odp_t *o, int (*postep)(const char *msg)) {
+    char url[ADR], tmp[ADR], msg[120];
+    memset(o, 0, sizeof *o);
+    k_strncpy(url, url_we, sizeof url);
+    if (pob_zajete) { k_strncpy(o->blad_tytul, "Sieć zajęta", sizeof o->blad_tytul);
+                      k_strncpy(o->blad, "Trwa inne pobieranie - spróbuj za chwilę.", sizeof o->blad); return 0; }
     if (!siec_gotowa) {
-        pasek("Uruchamianie sieci: karta sieciowa i DHCP...");
+        if (postep) postep("Uruchamianie sieci: karta sieciowa i DHCP...");
         int e = siec_start();
-        if (e) { strona_bledu("Brak sieci", siec_blad(e)); return 1; }
+        if (e) { k_strncpy(o->blad_tytul, "Brak sieci", sizeof o->blad_tytul); k_strncpy(o->blad, siec_blad(e), sizeof o->blad); return 0; }
     }
+    pob_zajete = 1;
+    int wynik = 0;
     for (int przekier = 0; przekier < 6; przekier++) {
         if (zaczyna(url, "https://")) { przez_frogfind(url, tmp, sizeof tmp); k_strncpy(url, tmp, sizeof url); }
         url_t u;
-        if (!url_rozbierz(url, &u)) { strona_bledu("Nieprawidłowy adres", url); return 1; }
-        k_strncpy(adres, url, sizeof adres);
-
-        ksprintf(msg, sizeof msg, "Szukanie serwera %s...", u.host); pasek(msg);
+        k_strncpy(o->url, url, sizeof o->url);
+        if (!url_rozbierz(url, &u)) { k_strncpy(o->blad_tytul, "Nieprawidłowy adres", sizeof o->blad_tytul); k_strncpy(o->blad, url, sizeof o->blad); goto koniec; }
+        ksprintf(msg, sizeof msg, "Szukanie serwera %s...", u.host);
+        if (postep && postep(msg)) goto przerwano;
         u32 ip;
         if (!dns_zapytaj(u.host, &ip)) {
-            ksprintf(msg, sizeof msg, "Nie znaleziono serwera <b>%s</b>. Sprawdź adres.", u.host);
-            strona_bledu("Nie znaleziono strony", msg);
-            return 1;
+            k_strncpy(o->blad_tytul, "Nie znaleziono strony", sizeof o->blad_tytul);
+            ksprintf(o->blad, sizeof o->blad, "Nie znaleziono serwera <b>%s</b>. Sprawdź adres.", u.host);
+            goto koniec;
         }
         char ipt[16]; ip_tekst(ip, ipt);
-        ksprintf(msg, sizeof msg, "Łączenie z %s (%s)...", u.host, ipt); pasek(msg);
-        if (!tcp_polacz(ip, u.port, dane, sizeof dane - 1)) {
-            ksprintf(msg, sizeof msg, "Serwer %s (%s) nie odpowiada.", u.host, ipt);
-            strona_bledu("Brak połączenia", msg);
-            return 1;
+        ksprintf(msg, sizeof msg, "Łączenie z %s (%s)...", u.host, ipt);
+        if (postep && postep(msg)) goto przerwano;
+        if (!tcp_polacz(ip, u.port, bufor, rozmiar - 1)) {
+            k_strncpy(o->blad_tytul, "Brak połączenia", sizeof o->blad_tytul);
+            ksprintf(o->blad, sizeof o->blad, "Serwer %s (%s) nie odpowiada.", u.host, ipt);
+            goto koniec;
         }
         static char zap[ADR + 300];
         ksprintf(zap, sizeof zap, "GET %s HTTP/1.0\r\nHost: %s\r\nUser-Agent: AmenOS/" AMENOS_WERSJA
-                 " (x86; przegladarka tekstowa)\r\nAccept: text/html, text/plain\r\nAccept-Charset: utf-8\r\n"
+                 " (x86)\r\nAccept: text/html, text/plain, image/*\r\nAccept-Charset: utf-8\r\n"
                  "Accept-Language: pl, en\r\nConnection: close\r\n\r\n", u.sciezka, u.host);
-        if (!tcp_wyslij(zap, k_strlen(zap))) { tcp_zamknij(); strona_bledu("Błąd połączenia", "Nie udało się wysłać zapytania."); return 1; }
-
+        if (!tcp_wyslij(zap, k_strlen(zap))) {
+            tcp_zamknij();
+            k_strncpy(o->blad_tytul, "Błąd połączenia", sizeof o->blad_tytul);
+            k_strncpy(o->blad, "Nie udało się wysłać zapytania.", sizeof o->blad);
+            goto koniec;
+        }
         u32 t_pasek = 0;
-        int przerwano = 0;
-        while (!tcp_zakonczone() && tcp_cisza_ms() < 15000 && tcp_odebrano() < sizeof dane - 1) {
+        int przerw = 0;
+        while (!tcp_zakonczone() && tcp_cisza_ms() < 15000 && tcp_odebrano() < rozmiar - 1) {
             siec_odbieraj();
-            if (zegar_ms() - t_pasek > 250) {
-                t_pasek = zegar_ms();
-                ksprintf(msg, sizeof msg, "Pobieranie %s...  %u KB   (Esc - przerwij)", u.host, (int)(tcp_odebrano() / 1024));
-                pasek(msg);
+            if (postep) {
+                const char *m = 0;
+                if (zegar_ms() - t_pasek > 250) {
+                    t_pasek = zegar_ms();
+                    ksprintf(msg, sizeof msg, "Pobieranie %s...  %u KB   (Esc - przerwij)", u.host, (int)(tcp_odebrano() / 1024));
+                    m = msg;
+                }
+                if (postep(m)) { przerw = 1; break; }
             }
-            if (kbd_poll() == KEY_ESC) { przerwano = 1; break; }
         }
         tcp_zamknij();
-        dane_dl = tcp_odebrano();
-        dane[dane_dl] = 0;
-        if (przerwano && !dane_dl) { strona_bledu("Przerwano", "Pobieranie zostało przerwane."); return 1; }
+        u32 dl = tcp_odebrano();
+        bufor[dl] = 0;
+        if (przerw && !dl) goto przerwano;
 
-        /* nagłówki */
-        const u8 *koniec_nagl = szukaj_ci(dane, dane + dane_dl, "\r\n\r\n");
+        const u8 *koniec_nagl = szukaj_ci(bufor, bufor + dl, "\r\n\r\n");
         u32 start = 4;
-        if (!koniec_nagl) { koniec_nagl = szukaj_ci(dane, dane + dane_dl, "\n\n"); start = 2; }
-        if (!koniec_nagl || !zaczyna((const char *)dane, "HTTP/")) { strona_bledu("Błędna odpowiedź", "Serwer odpowiedział w nieznany sposób."); return 1; }
-        const char *h = (const char *)dane, *hk = (const char *)koniec_nagl;
+        if (!koniec_nagl) { koniec_nagl = szukaj_ci(bufor, bufor + dl, "\n\n"); start = 2; }
+        if (!koniec_nagl || !zaczyna((const char *)bufor, "HTTP/")) {
+            k_strncpy(o->blad_tytul, "Błędna odpowiedź", sizeof o->blad_tytul);
+            k_strncpy(o->blad, "Serwer odpowiedział w nieznany sposób.", sizeof o->blad);
+            goto koniec;
+        }
+        const char *h = (const char *)bufor, *hk = (const char *)koniec_nagl;
         int kod = 0;
         const char *sp = h; while (sp < hk && *sp != ' ') sp++;
         for (sp++; *sp >= '0' && *sp <= '9'; sp++) kod = kod * 10 + (*sp - '0');
-
         char lok[ADR];
         if (kod >= 300 && kod < 400 && naglowek_http(h, hk, "location", lok, sizeof lok)) {
             if (zaczyna(lok, "https://")) k_strncpy(tmp, lok, sizeof tmp);
-            else if (!url_pelny(url, lok, tmp, sizeof tmp)) { strona_bledu("Błędne przekierowanie", lok); return 1; }
+            else if (!url_pelny(url, lok, tmp, sizeof tmp)) {
+                k_strncpy(o->blad_tytul, "Błędne przekierowanie", sizeof o->blad_tytul); k_strncpy(o->blad, lok, sizeof o->blad); goto koniec;
+            }
             k_strncpy(url, tmp, sizeof url);
             continue;
         }
-
-        u8 *cialo = (u8 *)koniec_nagl + start;
-        u32 cdl = dane_dl - (u32)(cialo - dane);
-        char te[32] = "", typ[96] = "";
-        if (naglowek_http(h, hk, "transfer-encoding", te, sizeof te) && zaczyna(te, "chunked")) cdl = chunked_dekoduj(cialo, cdl);
-        naglowek_http(h, hk, "content-type", typ, sizeof typ);
-        kodowanie = ustal_kodowanie(typ, cialo, cdl);
-        if (!typ[0] || szukaj_ci((const u8 *)typ, (const u8 *)typ + k_strlen(typ), "html")) renderuj_html(cialo, cialo + cdl);
-        else if (zaczyna(typ, "text/")) renderuj_tekst(cialo, cialo + cdl);
-        else {
-            ksprintf(msg, sizeof msg, "Ten rodzaj pliku (%s) nie może zostać wyświetlony.", typ);
-            strona_bledu("Plik nie jest stroną", msg);
-        }
-        if (kod >= 400 && !tytul[0]) ksprintf(tytul, sizeof tytul, "Błąd HTTP %d", kod);
-        return 1;
+        o->cialo = (u8 *)koniec_nagl + start;
+        o->dl = dl - (u32)(o->cialo - bufor);
+        char te[32] = "";
+        if (naglowek_http(h, hk, "transfer-encoding", te, sizeof te) && zaczyna(te, "chunked")) o->dl = chunked_dekoduj(o->cialo, o->dl);
+        naglowek_http(h, hk, "content-type", o->typ, sizeof o->typ);
+        o->kod = kod;
+        o->cialo[o->dl] = 0;
+        wynik = 1;
+        goto koniec;
     }
-    strona_bledu("Za dużo przekierowań", url);
+    k_strncpy(o->blad_tytul, "Za dużo przekierowań", sizeof o->blad_tytul);
+    k_strncpy(o->blad, url, sizeof o->blad);
+    goto koniec;
+przerwano:
+    k_strncpy(o->blad_tytul, "Przerwano", sizeof o->blad_tytul);
+    k_strncpy(o->blad, "Pobieranie zostało przerwane.", sizeof o->blad);
+koniec:
+    pob_zajete = 0;
+    return wynik;
+}
+
+static int postep_tekstowy(const char *m) {
+    if (m) pasek(m);
+    return kbd_poll() == KEY_ESC;
+}
+
+/* pobiera stronę i ją składa (przeglądarka tekstowa) */
+static int pobierz_i_pokaz(const char *url_we) {
+    static www_odp_t o;
+    char msg[160];
+    int ok = www_pobierz(url_we, dane, sizeof dane, &o, postep_tekstowy);
+    k_strncpy(adres, o.url[0] ? o.url : url_we, sizeof adres);
+    if (!ok) { strona_bledu(o.blad_tytul, o.blad); return 1; }
+    dane_dl = o.dl;
+    kodowanie = ustal_kodowanie(o.typ, o.cialo, o.dl);
+    if (!o.typ[0] || szukaj_ci((const u8 *)o.typ, (const u8 *)o.typ + k_strlen(o.typ), "html")) renderuj_html(o.cialo, o.cialo + o.dl);
+    else if (zaczyna(o.typ, "text/")) renderuj_tekst(o.cialo, o.cialo + o.dl);
+    else {
+        ksprintf(msg, sizeof msg, "Ten rodzaj pliku (%s) nie może zostać wyświetlony.", o.typ);
+        strona_bledu("Plik nie jest stroną", msg);
+    }
+    if (o.kod >= 400 && !tytul[0]) ksprintf(tytul, sizeof tytul, "Błąd HTTP %d", o.kod);
     return 1;
 }
 
@@ -708,7 +749,7 @@ static void wstecz(void) {
 }
 
 /* wpisany tekst: adres strony albo wyszukiwanie */
-static void wpisany_adres(const char *s, char *o, u32 max) {
+void wpisany_adres(const char *s, char *o, u32 max) {
     while (*s == ' ') s++;
     int kropka = 0, odstep = 0;
     for (const char *p = s; *p; p++) { if (*p == '.') kropka = 1; if (*p == ' ') odstep = 1; }

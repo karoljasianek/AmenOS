@@ -32,7 +32,7 @@ static u32 tekst_na_lit(int k) { return (k == KOL_BIALY || k == KOL_ROZOWY) ? 0x
 
 /* ---------- okna ---------- */
 
-enum { O_TERMINAL, O_KALENDARZ, O_ZEGAR, O_MUZYKA, O_INFO, O_KOMUNIKAT, O_N };
+enum { O_TERMINAL, O_KALENDARZ, O_ZEGAR, O_MUZYKA, O_INFO, O_WWW, O_KOMUNIKAT, O_N };
 typedef struct { int x, y, cw, ch; const char *tytul; int ikona, otwarte, zminim; } okno_t;
 static okno_t okna[O_N] = {
     { 0, 0, 640, 400, "Terminal",              0, 0, 0 },
@@ -40,6 +40,7 @@ static okno_t okna[O_N] = {
     { 0, 0, 260, 330, "Zegar",                 2, 0, 0 },
     { 0, 0, 440, 336, "Muzyka mszalna",        4, 0, 0 },
     { 0, 0, 420, 236, "O systemie",           11, 0, 0 },
+    { 0, 0, 860, 660, "Przeglądarka",          5, 0, 0 },
     { 0, 0, 380, 132, "AmenOS",               11, 0, 0 },
 };
 static int z[O_N], zn;                      /* kolejność od spodu do wierzchu */
@@ -51,6 +52,22 @@ static int menu_otwarte;
 static int wybrana_ikona = -1;
 static u32 ost_klik_czas;
 static char komunikat_txt[200];
+
+static int klient_ciag = -1;                /* okno, w którym trzymamy przycisk myszy */
+static int www_pod = 0;
+
+/* przeglądarka graficzna (www_gui.c) */
+int  wwwg_init(int cw, int ch);
+void wwwg_rysuj(int x, int y);
+void wwwg_klik(int lx, int ly);
+void wwwg_ciagnij(int lx, int ly);
+void wwwg_puszczenie(void);
+int  wwwg_najedz(int lx, int ly);
+void wwwg_klawisz(int k);
+void wwwg_tik(void);
+void wwwg_otworz(const char *url);
+const char *wwwg_tytul(void);
+static int www_start;
 
 static czas_t dzis;
 static dzien_lit_t dzis_lit;
@@ -111,6 +128,14 @@ static void komunikat(const char *s) {
 }
 
 int gui_terminal_aktywny(void) { return !menu_otwarte && okno_aktywne() == O_TERMINAL; }
+
+void gui_www_brudne(int x, int y, int w, int h) {
+    if (widoczne(O_WWW)) brudne(okna[O_WWW].x + BR + x, okna[O_WWW].y + TB + y, w, h);
+    if (y < 0 && okna[O_WWW].otwarte) brudne(0, fb_h - PASEK_H, fb_w, PASEK_H);   /* nowy tytuł na pasku zadań */
+}
+static void komponuj(void);
+void gui_rysuj_teraz(void) { if (brud) komponuj(); }
+int gui_www_aktywne(void) { return !menu_otwarte && okno_aktywne() == O_WWW; }
 
 /* ---------- elementy wspólne ---------- */
 
@@ -433,7 +458,7 @@ static void rysuj_komunikat(int x, int y) {
 /* ====================================================================== */
 
 enum { A_TERMINAL, A_KALENDARZ, A_ZEGAR, A_PIESNI, A_MUZYKA, A_WWW, A_MODLITWY, A_SPOWIEDZ, A_KOMUNIA,
-       A_OGLOSZENIA, A_MSZE, A_INFO, A_DZIS, A_RESTART, A_WYLACZ, A_ODSTEP };
+       A_OGLOSZENIA, A_MSZE, A_INFO, A_DZIS, A_RESTART, A_WYLACZ, A_ODSTEP, A_WWW_TEKST };
 
 static const struct { const char *nazwa; int ikona, akcja; } ikony[] = {
     { "Terminal", 0, A_TERMINAL }, { "Kalendarz", 1, A_KALENDARZ }, { "Zegar", 2, A_ZEGAR },
@@ -454,7 +479,8 @@ static void ikona_poz(int i, int *x, int *y) {
 static const struct { const char *nazwa; int ikona, akcja; } menu[] = {
     { "Terminal", 0, A_TERMINAL }, { "Dziś w liturgii", 1, A_DZIS }, { "Kalendarz liturgiczny", 1, A_KALENDARZ },
     { "Zegar", 2, A_ZEGAR }, { "Tablica pieśni", 3, A_PIESNI }, { "Muzyka mszalna", 4, A_MUZYKA },
-    { "Przeglądarka", 5, A_WWW }, { "Modlitwy", 6, A_MODLITWY }, { "Spowiedź", 7, A_SPOWIEDZ },
+    { "Przeglądarka", 5, A_WWW }, { "Przeglądarka tekstowa", 0, A_WWW_TEKST },
+    { "Modlitwy", 6, A_MODLITWY }, { "Spowiedź", 7, A_SPOWIEDZ },
     { "Komunia święta", 8, A_KOMUNIA }, { "Ogłoszenia", 9, A_OGLOSZENIA }, { "Porządek Mszy", 10, A_MSZE },
     { "O systemie", 11, A_INFO }, { 0, -1, A_ODSTEP },
     { "Uruchom ponownie", -1, A_RESTART }, { "Wyłącz komputer", -1, A_WYLACZ },
@@ -485,7 +511,11 @@ static void uruchom(int a) {
     case A_INFO:       okno_otworz(O_INFO); break;
     case A_DZIS:       polecenie("dzis"); break;
     case A_PIESNI:     polecenie("piesni"); break;
-    case A_WWW:        polecenie("www"); break;
+    case A_WWW:
+        okno_otworz(O_WWW);
+        if (!www_start) { www_start = 1; wwwg_otworz("about:start"); }
+        break;
+    case A_WWW_TEKST:  polecenie("www"); break;
     case A_MODLITWY:   polecenie("modlitwy"); break;
     case A_SPOWIEDZ:   polecenie("spowiedz"); break;
     case A_KOMUNIA:    polecenie("komunia"); break;
@@ -539,7 +569,16 @@ static void rysuj_okno(int i) {
     if (akt) fb_gradient(x + 1, y + 1, w - 2, TB - 2, 0x3A6EC0, 0x24508F);
     else fb_gradient(x + 1, y + 1, w - 2, TB - 2, 0x9AA0AC, 0x7A808C);
     fb_ikona(x + 6, y + 5, fb_ikona_nr(o->ikona), 1);
-    tekst_gruby(x + 28, y + 5, o->tytul, 0xFFFFFF);
+    if (i == O_WWW) o->tytul = wwwg_tytul();
+    {
+        char t[160]; const char *q = o->tytul;
+        int maks = (w - 90) / 8, n = 0;
+        while (*q && n < maks) { k_utf8_next(&q); n++; }
+        u32 dl = (u32)(q - o->tytul);
+        if (dl > sizeof t - 1) dl = sizeof t - 1;
+        memcpy(t, o->tytul, dl); t[dl] = 0;
+        tekst_gruby(x + 28, y + 5, t, 0xFFFFFF);
+    }
     /* przyciski: minimalizuj i zamknij */
     int bx = x + w - BR - 24;
     fb_prost_zaokr(bx, y + 4, 20, 18, 3, akt ? 0xC8463C : 0x8A8F9A);
@@ -561,6 +600,7 @@ static void rysuj_okno(int i) {
     case O_MUZYKA:    rysuj_muzyke(cx, cy); break;
     case O_INFO:      rysuj_info(cx, cy); break;
     case O_KOMUNIKAT: rysuj_komunikat(cx, cy); break;
+    case O_WWW:       wwwg_rysuj(cx, cy); break;
     }
     fb_klip(kx, ky, kw, kh);
 }
@@ -578,6 +618,7 @@ static void rysuj_pasek(void) {
     int akt = okno_aktywne();
     for (int i = 0; i < O_KOMUNIKAT; i++) {
         if (!okna[i].otwarte) continue;
+        if (i == O_WWW) okna[i].tytul = wwwg_tytul();
         u32 c = (i == akt) ? 0x4A5878 : 0x323848;
         fb_prost_zaokr(bx, y + 4, 168, 28, 4, c);
         fb_ikona(bx + 6, y + 10, fb_ikona_nr(okna[i].ikona), 1);
@@ -696,6 +737,7 @@ static void klik(int x, int y) {
             int lx = x - o->x - BR, ly = y - o->y - TB;
             if (i == O_KALENDARZ) klik_kalendarz(lx, ly);
             else if (i == O_MUZYKA) klik_muzyka(lx, ly);
+            else if (i == O_WWW) { klient_ciag = O_WWW; wwwg_klik(lx, ly); }
             else if (i == O_KOMUNIKAT && w_prost(lx, ly, o->cw - 96, o->ch - 40, 84, 28)) okno_zamknij(i);
         }
         return;
@@ -736,8 +778,23 @@ void gui_mysz(int dx, int dy, int przyciski) {
         if (o->y > fb_h - PASEK_H - TB) o->y = fb_h - PASEK_H - TB;
         okno_brudne(ciagniete);
     }
+    if ((przyciski & 1) && klient_ciag == O_WWW && (dx || dy) && widoczne(O_WWW))
+        wwwg_ciagnij(mx - okna[O_WWW].x - BR, my - okna[O_WWW].y - TB);
     if ((przyciski & 1) && !(przyc & 1)) klik(mx, my);
-    if (!(przyciski & 1)) ciagniete = -1;
+    if (!(przyciski & 1)) {
+        ciagniete = -1;
+        if (klient_ciag == O_WWW) wwwg_puszczenie();
+        klient_ciag = -1;
+        /* link pod myszą w przeglądarce */
+        int nad = -1;
+        for (int k = zn - 1; k >= 0; k--) {
+            int i = z[k];
+            if (!widoczne(i)) continue;
+            if (w_prost(mx, my, okna[i].x, okna[i].y, ow(i), oh(i))) { nad = i; break; }
+        }
+        if (nad == O_WWW && !menu_otwarte) { wwwg_najedz(mx - okna[O_WWW].x - BR, my - okna[O_WWW].y - TB); www_pod = 1; }
+        else if (www_pod) { wwwg_najedz(-1, -1); www_pod = 0; }
+    }
     przyc = przyciski;
 }
 
@@ -748,6 +805,7 @@ void gui_klawisz(int k) {
     }
     int a = okno_aktywne();
     if (a < 0) return;
+    if (a == O_WWW) { wwwg_klawisz(k); return; }
     if (k == KEY_ESC) { okno_zamknij(a); return; }
     if (a == O_KALENDARZ) {
         if (k == KEY_LEFT || k == KEY_PGUP) kal_zmien_mies(-1);
@@ -789,6 +847,7 @@ void gui_pompuj(void) {
     }
     terminal_sprawdz(t);
     if (brud && t - ost_rys >= 12) { komponuj(); ost_rys = t; }
+    if (okna[O_WWW].otwarte) wwwg_tik();
     w_pompie = 0;
 }
 
@@ -808,6 +867,11 @@ void gui_init(u32 pam) {
     okna[O_ZEGAR].x = fb_w - ow(O_ZEGAR) - 60;         okna[O_ZEGAR].y = 90;
     okna[O_MUZYKA].x = (fb_w - ow(O_MUZYKA)) / 2 + 60; okna[O_MUZYKA].y = 120;
     okna[O_INFO].x = (fb_w - ow(O_INFO)) / 2;          okna[O_INFO].y = 150;
+    okna[O_WWW].cw = fb_w >= 1000 ? 860 : fb_w - 40;
+    okna[O_WWW].ch = obszar_h - TB - BR - 20;
+    okna[O_WWW].x = (fb_w - ow(O_WWW)) / 2 + (fb_w >= 1000 ? 50 : 0);
+    okna[O_WWW].y = 8;
+    wwwg_init(okna[O_WWW].cw, okna[O_WWW].ch);
     for (int i = 0; i < O_N; i++) {
         if (okna[i].x < 0) okna[i].x = 0;
         if (okna[i].y + oh(i) > obszar_h) okna[i].y = obszar_h - oh(i) > 0 ? obszar_h - oh(i) : 0;

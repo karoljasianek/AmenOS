@@ -1,4 +1,4 @@
-# AmenOS 1.6 — system operacyjny dla parafii
+# AmenOS 1.7 — system operacyjny dla parafii
 
 Mały system operacyjny napisany od zera (C + asembler) na komputery x86.
 Nie potrzebuje Windowsa ani Linuksa — startuje prosto z pendrive'a lub płyty.
@@ -15,6 +15,9 @@ System startuje w trybie graficznym (1024×768 lub 800×600) z pulpitem obsługi
 - **pasek zadań** — menu Start, przyciski otwartych okien, zegar, data i kolor liturgiczny dnia,
 - **programy graficzne** — kalendarz liturgiczny (klikalny, z kolorami), zegar ze wskazówkami,
   odtwarzacz muzyki mszalnej grający w tle, okno „O systemie”,
+- **przeglądarka graficzna** — strony z nagłówkami, linkami do klikania, listami, tabelami
+  i **obrazkami** (JPEG, PNG, GIF, BMP), pole adresu, wstecz/dalej, przewijanie, adres linku
+  pod myszą; strony HTTPS przez FrogFind (jak w przeglądarce tekstowej),
 - **Terminal** — dotychczasowa powłoka w oknie; wszystkie programy tekstowe (przeglądarka,
   spowiedź, Komunia, tablica pieśni, modlitwy, ogłoszenia…) działają w nim i można je uruchamiać
   ikonami z pulpitu albo z menu Start.
@@ -24,7 +27,8 @@ Jeśli karta graficzna nie obsługuje trybu graficznego, w menu startowym GRUB-a
 
 | | |
 |---|---|
-| ![Menu Start](zrzuty/0b-pulpit-menu.png) | ![Przeglądarka w oknie terminala](zrzuty/0c-pulpit-terminal.png) |
+| ![Przeglądarka graficzna](zrzuty/15-przegladarka-graficzna.png) | ![Przeglądarka graficzna - dalsza część strony](zrzuty/15b-przegladarka-graficzna.png) |
+| ![Menu Start](zrzuty/0b-pulpit-menu.png) | ![Przeglądarka tekstowa w oknie terminala](zrzuty/0c-pulpit-terminal.png) |
 | ![Ekran powitalny](zrzuty/1-powitanie.png) | ![Kalendarz miesiąca](zrzuty/3-miesiac.png) |
 | ![Tablica pieśni](zrzuty/4-tablica-piesni.png) | ![Komunia święta](zrzuty/10-komunia.png) |
 | ![Spowiedź](zrzuty/9-spowiedz-nauka.png) | ![Muzyka mszalna](zrzuty/11-muzyka.png) |
@@ -46,7 +50,7 @@ Jeśli karta graficzna nie obsługuje trybu graficznego, w menu startowym GRUB-a
 | `spowiedz` | **wirtualny spowiednik**: wierny pisze, komputer prowadzi spowiedź, daje naukę i pokutę dobraną do grzechów i wypowiada formułę rozgrzeszenia; potem wszystko jest wymazywane z pamięci |
 | `komunia` | **Komunia święta**: Hostia w promieniach, „Oto Baranek Boży”, dzwonki, „Ciało Chrystusa”, dziękczynienie z muzyką |
 | `muzyka`, `muzyka N`, `muzyka wszystko` | **muzyka mszalna** z głośniczka komputera (8 utworów: wejście, Adwent, Boże Narodzenie, Wielki Post, Komunia, dziękczynienie) |
-| `www [adres]` | **przeglądarka internetowa** (tekstowa): linki, historia, wyszukiwanie; strony HTTPS przez FrogFind |
+| `www [adres]` | **przeglądarka tekstowa** w terminalu: linki, historia, wyszukiwanie; strony HTTPS przez FrogFind (graficzna: ikona „Internet” na pulpicie) |
 | `usb` | kontrolery USB i podłączone klawiatury, myszy, koncentratory |
 | `siec`, `ping ADRES`, `siec dns A.B.C.D` | stan sieci (adres z DHCP), test połączenia, własny serwer DNS |
 | `zegar` | duży zegar z datą i obchodem dnia |
@@ -94,7 +98,10 @@ w niedzielę) i przenoszenie uroczystości (np. Zwiastowanie po oktawie Wielkano
   Adres IP jest pobierany automatycznie (DHCP).
 - Przeglądarka obsługuje zwykłe HTTP. Strony **HTTPS** (większość dzisiejszych) są otwierane
   przez zewnętrzny serwis [FrogFind](http://frogfind.com), który pobiera je i upraszcza do
-  tekstu — adresy tych stron trafiają więc do tego serwisu. Brak JavaScriptu, formularzy i obrazków.
+  tekstu — adresy tych stron trafiają więc do tego serwisu. Brak JavaScriptu i formularzy.
+- Przeglądarka graficzna: obrazki JPEG (bez progresywnych), PNG (bez przeplotu), GIF (pierwsza
+  klatka) i BMP; jedna czcionka 8×16 (nagłówek 1. stopnia powiększony), bez CSS i kółka myszy.
+  Potrzebuje ok. 48 MB pamięci RAM — przy mniejszej pokazuje komunikat.
 - Pulpit wymaga karty graficznej z VBE (praktycznie każda karta od ok. 2000 r., QEMU, VirtualBox).
 - **Klawiatury i myszy USB** obsługiwane są bezpośrednio przez kontrolery **xHCI** (USB 3, komputery
   od ok. 2012 r.) i **UHCI** (starsze komputery z chipsetami Intel/VIA), także przez **koncentratory**
@@ -127,6 +134,9 @@ src/usb.c           warstwa USB: wykrywanie, deskryptory, koncentratory, klawiat
 src/xhci.c          sterownik kontrolera xHCI (USB 3)
 src/uhci.c          sterownik kontrolera UHCI (USB 1.1); EHCI oddaje mu porty
 src/pci.c           dostęp do konfiguracji PCI
+src/www_gui.c       przeglądarka graficzna: HTML → elementy → układ w pikselach, okno
+src/obrazy.c        dekodery obrazków: inflate+PNG, GIF (LZW), JPEG baseline (IDCT), BMP
+src/www.h           wspólne pobieranie HTTP i narzędzia obu przeglądarek
 src/rtc.c           zegar CMOS
 src/dzwiek.c        czasomierz PIT i głośniczek PC
 src/muzyka_dane.h   nuty utworów (wygenerowane przez tools/gen_muzyka.py)

@@ -121,6 +121,7 @@ u8 vga_map(u32 c) {
     case 0x00B7: return 0xFA;  /* · */
     case 0x2192: return 0x1A;  /* → */
     case 0x2190: return 0x1B;  /* ← */
+    case 0x2302: return 0x7F;  /* ⌂ */
     case 0x25BA: case 0x25B6: return 0x10;  /* ► */
     case 0x25C4: case 0x25C0: return 0x11;  /* ◄ */
     case 0x25A0: return 0xFE;  /* ■ */

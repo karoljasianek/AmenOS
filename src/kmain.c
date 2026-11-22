@@ -3,6 +3,15 @@
 
 extern char koniec_jadra[];                     /* z linker.ld */
 
+/* duże obszary pamięci za jądrem (bufor ekranu, obrazki); bez zwalniania */
+static u32 wolna, granica;
+void *pamiec_duza(u32 rozmiar) {
+    u32 p = (wolna + 0xFFFu) & ~0xFFFu;
+    if (!granica || p + rozmiar > granica) return 0;
+    wolna = p + rozmiar;
+    return (void *)p;
+}
+
 void kmain(u32 magic, const u32 *mbi) {
     czasomierz_init();
     u32 pamiec_kb = 0;
@@ -16,7 +25,10 @@ void kmain(u32 magic, const u32 *mbi) {
     }
     if (!bez_usb) usb_init();
     else usb_wylaczone = 1;
-    int grafika = magic == 0x2BADB002 && fb_init(mbi, (u32)koniec_jadra, pamiec_kb);
+    wolna = (u32)koniec_jadra;
+    granica = pamiec_kb ? 0x100000u + pamiec_kb * 1024u - 0x10000u : 0;
+    if (granica > 0xE0000000u) granica = 0xE0000000u;
+    int grafika = magic == 0x2BADB002 && fb_init(mbi);
     vga_init(grafika);
     if (grafika) {
         gui_init(pamiec_kb);

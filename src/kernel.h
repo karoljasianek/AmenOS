@@ -2,7 +2,7 @@
 #ifndef AMENOS_KERNEL_H
 #define AMENOS_KERNEL_H
 
-#define AMENOS_WERSJA "1.6"
+#define AMENOS_WERSJA "1.7"
 
 typedef unsigned char  u8;
 typedef unsigned short u16;
@@ -169,7 +169,9 @@ void cmd_ping(char *arg);
 /* ---------- grafika (fb.c) ---------- */
 #define FB_PRZEZR 0xFF000000u
 extern int fb_jest, fb_w, fb_h;
-int  fb_init(const u32 *mbi, u32 koniec_jadra, u32 pamiec_kb);
+int  fb_init(const u32 *mbi);
+void fb_obraz(int x, int y, int w, int h, const u32 *piks);
+void *pamiec_duza(u32 rozmiar);          /* kmain.c: duży obszar za jądrem albo 0 */
 void fb_klip(int x, int y, int w, int h);
 void fb_klip_caly(void);
 void fb_klip_zawez(int x, int y, int w, int h);

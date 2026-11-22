@@ -11,7 +11,7 @@ static u32 *bb;                              /* bufor w RAM, format 0x00RRGGBB *
 static int poz_r, poz_g, poz_b;
 static int kx0, ky0, kx1, ky1;               /* prostokąt przycinania (x1, y1 wyłącznie) */
 
-int fb_init(const u32 *mbi, u32 koniec_jadra, u32 pamiec_kb) {
+int fb_init(const u32 *mbi) {
     if (!(mbi[0] & (1u << 12))) return 0;
     const u8 *m = (const u8 *)mbi;
     u32 adr = *(const u32 *)(m + 88), adr_hi = *(const u32 *)(m + 92);
@@ -23,11 +23,9 @@ int fb_init(const u32 *mbi, u32 koniec_jadra, u32 pamiec_kb) {
     if (adr_hi || typ != 1 || (fb_bpp != 32 && fb_bpp != 24) || fb_w < 800 || fb_h < 600 || fb_w > 1920 || fb_h > 1200)
         return 0;
     poz_r = m[112]; poz_g = m[114]; poz_b = m[116];      /* unia color_info jest wyrównana do 4 bajtów */
-    u32 start = (koniec_jadra + 0xFFFu) & ~0xFFFu;
-    u32 potrzeba = (u32)fb_w * (u32)fb_h * 4u;
-    if (start + potrzeba > 0x100000u + pamiec_kb * 1024u) return 0;   /* za mało pamięci */
+    bb = pamiec_duza((u32)fb_w * (u32)fb_h * 4u);
+    if (!bb) return 0;                                       /* za mało pamięci */
     fb = (u8 *)adr;
-    bb = (u32 *)start;
     fb_klip_caly();
     fb_jest = 1;
     return 1;
@@ -170,6 +168,17 @@ int fb_tekst_zawin(int x, int y, const char *s, int max_znakow, u32 kolor, int o
 }
 
 /* ikona 16x16 powiększona */
+/* obrazek (piksele 0x00RRGGBB) z przycinaniem */
+void fb_obraz(int x, int y, int w, int h, const u32 *piks) {
+    int x0 = x < kx0 ? kx0 : x, x1 = x + w > kx1 ? kx1 : x + w;
+    int y0 = y < ky0 ? ky0 : y, y1 = y + h > ky1 ? ky1 : y + h;
+    for (int j = y0; j < y1; j++) {
+        const u32 *z = piks + (j - y) * w + (x0 - x);
+        u32 *d = bb + j * fb_w + x0;
+        for (int i = x0; i < x1; i++) *d++ = *z++;
+    }
+}
+
 void fb_ikona(int x, int y, const u32 *piks, int skala) {
     for (int j = 0; j < 16; j++)
         for (int i = 0; i < 16; i++) {
