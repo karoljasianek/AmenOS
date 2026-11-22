@@ -1,4 +1,4 @@
-# AmenOS 1.5 — system operacyjny dla parafii
+# AmenOS 1.6 — system operacyjny dla parafii
 
 Mały system operacyjny napisany od zera (C + asembler) na komputery x86.
 Nie potrzebuje Windowsa ani Linuksa — startuje prosto z pendrive'a lub płyty.
@@ -29,6 +29,7 @@ Jeśli karta graficzna nie obsługuje trybu graficznego, w menu startowym GRUB-a
 | ![Tablica pieśni](zrzuty/4-tablica-piesni.png) | ![Komunia święta](zrzuty/10-komunia.png) |
 | ![Spowiedź](zrzuty/9-spowiedz-nauka.png) | ![Muzyka mszalna](zrzuty/11-muzyka.png) |
 | ![Przeglądarka](zrzuty/12-przegladarka.png) | ![Strona startowa przeglądarki](zrzuty/13-przegladarka-start.png) |
+| ![Urządzenia USB](zrzuty/14-usb.png) | |
 
 ## Co potrafi
 
@@ -46,6 +47,7 @@ Jeśli karta graficzna nie obsługuje trybu graficznego, w menu startowym GRUB-a
 | `komunia` | **Komunia święta**: Hostia w promieniach, „Oto Baranek Boży”, dzwonki, „Ciało Chrystusa”, dziękczynienie z muzyką |
 | `muzyka`, `muzyka N`, `muzyka wszystko` | **muzyka mszalna** z głośniczka komputera (8 utworów: wejście, Adwent, Boże Narodzenie, Wielki Post, Komunia, dziękczynienie) |
 | `www [adres]` | **przeglądarka internetowa** (tekstowa): linki, historia, wyszukiwanie; strony HTTPS przez FrogFind |
+| `usb` | kontrolery USB i podłączone klawiatury, myszy, koncentratory |
 | `siec`, `ping ADRES`, `siec dns A.B.C.D` | stan sieci (adres z DHCP), test połączenia, własny serwer DNS |
 | `zegar` | duży zegar z datą i obchodem dnia |
 | `parafia <nazwa>` | nazwa parafii na planszach |
@@ -93,9 +95,15 @@ w niedzielę) i przenoszenie uroczystości (np. Zwiastowanie po oktawie Wielkano
 - Przeglądarka obsługuje zwykłe HTTP. Strony **HTTPS** (większość dzisiejszych) są otwierane
   przez zewnętrzny serwis [FrogFind](http://frogfind.com), który pobiera je i upraszcza do
   tekstu — adresy tych stron trafiają więc do tego serwisu. Brak JavaScriptu, formularzy i obrazków.
-- Pulpit wymaga karty graficznej z VBE (praktycznie każda karta od ok. 2000 r., QEMU, VirtualBox)
-  i myszy PS/2 — mysz USB działa, jeśli BIOS ma włączoną emulację „USB Legacy Support”.
-  W VirtualBox ustaw w ustawieniach maszyny: System → Urządzenie wskazujące → **Mysz PS/2**.
+- Pulpit wymaga karty graficznej z VBE (praktycznie każda karta od ok. 2000 r., QEMU, VirtualBox).
+- **Klawiatury i myszy USB** obsługiwane są bezpośrednio przez kontrolery **xHCI** (USB 3, komputery
+  od ok. 2012 r.) i **UHCI** (starsze komputery z chipsetami Intel/VIA), także przez **koncentratory**
+  (hub w monitorze, KVM, listwa USB) i z podłączaniem w trakcie pracy. Urządzenia działają w trybie
+  „boot” HID — obsługuje go praktycznie każda klawiatura i mysz (także odbiorniki bezprzewodowe).
+  Kontrolery OHCI (niektóre płyty AMD/SiS/NVIDIA) i tablety USB (np. „USB Tablet” w VirtualBox)
+  nie są jeszcze obsługiwane — w VirtualBox wybierz mysz PS/2 albo „USB Mouse”.
+- Jeśli coś pójdzie nie tak z USB, w menu startowym jest pozycja **„bez sterowników USB”** —
+  wtedy klawiatura i mysz działają tak jak dawniej, przez emulację PS/2 w BIOS-ie.
 - Kalendarz jest **uproszczony**: zawiera wszystkie uroczystości i święta oraz
   najważniejsze wspomnienia, ale nie każde wspomnienie dowolne ani kalendarze
   diecezjalne. Do celów liturgicznych sprawdzaj z oficjalnym Ordo swojej diecezji.
@@ -105,7 +113,7 @@ w niedzielę) i przenoszenie uroczystości (np. Zwiastowanie po oktawie Wielkano
 ```
 sudo apt install build-essential gcc-multilib nasm grub-pc-bin grub-common xorriso mtools qemu-system-x86
 make            # tworzy amenos.iso
-make uruchom    # uruchamia w QEMU (z kartą sieciową e1000)
+make uruchom    # uruchamia w QEMU (sieć e1000, klawiatura i mysz USB na xHCI)
 ```
 
 ## Budowa systemu
@@ -115,6 +123,10 @@ src/boot.asm        start: nagłówek Multiboot, stos, skok do C
 src/kmain.c         główna funkcja jądra
 src/vga.c           ekran tekstowy VGA, polskie znaki wgrywane do pamięci czcionki, printf
 src/klawiatura.c    klawiatura i mysz PS/2, AltGr, edycja linii z historią
+src/usb.c           warstwa USB: wykrywanie, deskryptory, koncentratory, klawiatura i mysz HID
+src/xhci.c          sterownik kontrolera xHCI (USB 3)
+src/uhci.c          sterownik kontrolera UHCI (USB 1.1); EHCI oddaje mu porty
+src/pci.c           dostęp do konfiguracji PCI
 src/rtc.c           zegar CMOS
 src/dzwiek.c        czasomierz PIT i głośniczek PC
 src/muzyka_dane.h   nuty utworów (wygenerowane przez tools/gen_muzyka.py)

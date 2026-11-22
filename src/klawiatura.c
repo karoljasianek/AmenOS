@@ -50,6 +50,7 @@ static void mysz_pisz(u8 b) {
 }
 
 void mysz_init(void) {
+    if (inb(0x64) == 0xFF) return;            /* brak kontrolera PS/2 - zostaje mysz USB */
     ps2_czekaj_zapis(); outb(0x64, 0xA8);    /* włącz port myszy */
     ps2_czekaj_zapis(); outb(0x64, 0x20);
     u8 cfg = ps2_czekaj_odczyt() ? inb(0x60) : 0x47;
@@ -75,10 +76,15 @@ static void mysz_bajt(u8 b) {
     if (gui_aktywne) gui_mysz(dx, -dy, pak[0] & 7);
 }
 
+void kbd_wloz_kod(u8 kod) {
+    if (((kol_do + 1) & 63) != kol_od) { kolejka[kol_do] = kod; kol_do = (kol_do + 1) & 63; }
+}
+
 void ps2_obsluz(void) {
+    usb_odpytaj();
     for (int i = 0; i < 32; i++) {
         u8 st = inb(0x64);
-        if (!(st & 1)) break;
+        if (st == 0xFF || !(st & 1)) break;       /* 0xFF: komputer bez kontrolera PS/2 */
         u8 b = inb(0x60);
         if (st & 0x20) { if (mysz_jest) mysz_bajt(b); }
         else if (((kol_do + 1) & 63) != kol_od) { kolejka[kol_do] = b; kol_do = (kol_do + 1) & 63; }

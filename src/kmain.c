@@ -8,6 +8,14 @@ void kmain(u32 magic, const u32 *mbi) {
     u32 pamiec_kb = 0;
     if (magic == 0x2BADB002 && (mbi[0] & 1))
         pamiec_kb = mbi[2] + 1024;              /* pamięć powyżej 1 MB + pierwszy megabajt */
+    /* "bezusb" w linii poleceń (menu GRUB-a) wyłącza sterowniki USB - zostaje emulacja PS/2 z BIOS-u */
+    int bez_usb = 0;
+    if (magic == 0x2BADB002 && (mbi[0] & 4) && mbi[4]) {
+        const char *c = (const char *)mbi[4];
+        for (; *c; c++) if (c[0] == 'b' && c[1] == 'e' && c[2] == 'z' && c[3] == 'u' && c[4] == 's' && c[5] == 'b') bez_usb = 1;
+    }
+    if (!bez_usb) usb_init();
+    else usb_wylaczone = 1;
     int grafika = magic == 0x2BADB002 && fb_init(mbi, (u32)koniec_jadra, pamiec_kb);
     vga_init(grafika);
     if (grafika) {

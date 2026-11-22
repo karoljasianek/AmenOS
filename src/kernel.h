@@ -2,7 +2,7 @@
 #ifndef AMENOS_KERNEL_H
 #define AMENOS_KERNEL_H
 
-#define AMENOS_WERSJA "1.5"
+#define AMENOS_WERSJA "1.6"
 
 typedef unsigned char  u8;
 typedef unsigned short u16;
@@ -11,6 +11,7 @@ typedef unsigned int   u32;
 /* ---------- porty we/wy ---------- */
 static inline void outb(u16 port, u8 val) { __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port)); }
 static inline void outw(u16 port, u16 val) { __asm__ volatile("outw %0, %1" : : "a"(val), "Nd"(port)); }
+static inline u16 inw(u16 port) { u16 v; __asm__ volatile("inw %1, %0" : "=a"(v) : "Nd"(port)); return v; }
 static inline u8 inb(u16 port) { u8 v; __asm__ volatile("inb %1, %0" : "=a"(v) : "Nd"(port)); return v; }
 static inline void outl(u16 port, u32 val) { __asm__ volatile("outl %0, %1" : : "a"(val), "Nd"(port)); }
 static inline u32 inl(u16 port) { u32 v; __asm__ volatile("inl %1, %0" : "=a"(v) : "Nd"(port)); return v; }
@@ -79,6 +80,13 @@ int  kbd_poll(void);                    /* -1 gdy brak klawisza */
 void ps2_obsluz(void);                  /* odbiera bajty z portu 8042 (klawiatura + mysz) */
 void mysz_init(void);
 void kbd_wstrzyknij(const char *s);     /* wpisuje tekst do terminala, jakby z klawiatury */
+void kbd_wloz_kod(u8 kod);              /* kod klawisza PS/2 (np. z klawiatury USB) do kolejki */
+
+/* ---------- USB (usb.c, xhci.c, uhci.c) ---------- */
+void usb_init(void);
+void usb_odpytaj(void);
+void cmd_usb(void);
+extern int usb_wylaczone;
 int  kbd_getkey(void);                  /* czeka na klawisz */
 int  kbd_readline(char *buf, int max);  /* linia z historią, UTF-8; -1 = przerwano (F10) */
 extern int kbd_historia;
