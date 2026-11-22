@@ -1,9 +1,12 @@
-/* AmenOS - sterownik ekranu tekstowego VGA 80x25 z polskimi znakami */
+/* AmenOS - ekran tekstowy 80x25 z polskimi znakami.
+ * W trybie tekstowym pisze do pamięci karty VGA, w graficznym - do bufora rysowanego w oknie terminala. */
 #include "kernel.h"
 #include "font_pl.h"
 #include "znaki_dane.h"
 
-static volatile u16 *const VGA = (volatile u16 *)0xB8000;
+static volatile u16 *VGA = (volatile u16 *)0xB8000;
+static u16 bufor_graficzny[VGA_W * VGA_H];
+static int grafika, kursor_wl = 1;
 static int cx, cy;
 static u8 attr = ATTR(SZARY, CZARNY);
 
@@ -38,12 +41,15 @@ static void wylacz_miganie(void) {
 }
 
 static void kursor_sprzet(void) {
+    if (grafika) return;
     u16 pos = (u16)(cy * VGA_W + cx);
     outb(0x3D4, 0x0F); outb(0x3D5, (u8)(pos & 0xFF));
     outb(0x3D4, 0x0E); outb(0x3D5, (u8)(pos >> 8));
 }
 
 void vga_cursor(int on) {
+    kursor_wl = on;
+    if (grafika) return;
     if (on) {
         outb(0x3D4, 0x0A); outb(0x3D5, (inb(0x3D5) & 0xC0) | 13);
         outb(0x3D4, 0x0B); outb(0x3D5, (inb(0x3D5) & 0xE0) | 14);
@@ -52,7 +58,16 @@ void vga_cursor(int on) {
     }
 }
 
-void vga_init(void) {
+u16 *vga_bufor(void) { return (u16 *)VGA; }
+int vga_kursor_widoczny(void) { return kursor_wl; }
+
+void vga_init(int tryb_graficzny) {
+    grafika = tryb_graficzny;
+    if (grafika) {
+        VGA = bufor_graficzny;
+        vga_clear();
+        return;
+    }
     wgraj_polskie_litery();
     wylacz_miganie();
     vga_cursor(1);
@@ -106,6 +121,9 @@ u8 vga_map(u32 c) {
     case 0x00B7: return 0xFA;  /* · */
     case 0x2192: return 0x1A;  /* → */
     case 0x2190: return 0x1B;  /* ← */
+    case 0x25BA: case 0x25B6: return 0x10;  /* ► */
+    case 0x25C4: case 0x25C0: return 0x11;  /* ◄ */
+    case 0x25A0: return 0xFE;  /* ■ */
     case 0x2191: return 0x18;  /* ↑ */
     case 0x2193: return 0x19;  /* ↓ */
     case 0x266A: return 0x0D;  /* ♪ */

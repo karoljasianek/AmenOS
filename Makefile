@@ -6,15 +6,19 @@ LDFLAGS = -m elf_i386 -T linker.ld -nostdlib
 
 OBJS = build/boot.o build/kmain.o build/vga.o build/klawiatura.o build/rtc.o \
        build/liturgia.o build/powloka.o build/lib.o build/dzwiek.o \
-       build/e1000.o build/siec.o build/przegladarka.o
+       build/e1000.o build/siec.o build/przegladarka.o \
+       build/fb.o build/gui.o
 
 all: amenos.iso
 
-build/%.o: src/%.c src/kernel.h src/font_pl.h src/muzyka_dane.h src/znaki_dane.h | build
+build/%.o: src/%.c src/kernel.h src/font_pl.h src/muzyka_dane.h src/znaki_dane.h src/grafika_dane.h | build
 	$(CC) $(CFLAGS) -c $< -o $@
 
 build/boot.o: src/boot.asm | build
 	nasm -f elf32 $< -o $@
+
+build/boot_tekst.o: src/boot.asm | build
+	nasm -f elf32 -DTEKST $< -o $@
 
 build:
 	mkdir -p build
@@ -23,13 +27,17 @@ iso/boot/amenos.bin: $(OBJS) linker.ld
 	ld $(LDFLAGS) -o $@ $(OBJS)
 	grub-file --is-x86-multiboot $@
 
-amenos.iso: iso/boot/amenos.bin iso/boot/grub/grub.cfg
+iso/boot/amenos-tekst.bin: $(filter-out build/boot.o,$(OBJS)) build/boot_tekst.o linker.ld
+	ld $(LDFLAGS) -o $@ build/boot_tekst.o $(filter-out build/boot.o,$(OBJS))
+	grub-file --is-x86-multiboot $@
+
+amenos.iso: iso/boot/amenos.bin iso/boot/amenos-tekst.bin iso/boot/grub/grub.cfg
 	grub-mkrescue -o $@ iso 2>/dev/null
 
 uruchom: amenos.iso
 	qemu-system-i386 -cdrom amenos.iso -rtc base=localtime -m 64 -nic user,model=e1000
 
 clean:
-	rm -rf build iso/boot/amenos.bin amenos.iso
+	rm -rf build iso/boot/amenos.bin iso/boot/amenos-tekst.bin amenos.iso
 
 .PHONY: all uruchom clean

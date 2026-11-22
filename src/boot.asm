@@ -1,7 +1,12 @@
 ; AmenOS - punkt startowy (Multiboot 1, ładowany przez GRUB)
 MBALIGN  equ 1 << 0
 MEMINFO  equ 1 << 1
-FLAGS    equ MBALIGN | MEMINFO
+%ifdef TEKST
+FLAGS    equ MBALIGN | MEMINFO          ; wariant tekstowy: bez prośby o grafikę
+%else
+VIDEO    equ 1 << 2             ; prośba do GRUB-a o tryb graficzny
+FLAGS    equ MBALIGN | MEMINFO | VIDEO
+%endif
 MAGIC    equ 0x1BADB002
 CHECKSUM equ -(MAGIC + FLAGS)
 
@@ -10,6 +15,9 @@ align 4
     dd MAGIC
     dd FLAGS
     dd CHECKSUM
+    dd 0, 0, 0, 0, 0    ; adresy (nieużywane - jądro w formacie ELF)
+    dd 0                ; tryb liniowy (grafika)
+    dd 1024, 768, 32    ; preferowana rozdzielczość i głębia kolorów
 
 section .bss
 align 16

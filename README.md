@@ -1,11 +1,30 @@
-# AmenOS 1.4 — system operacyjny dla parafii
+# AmenOS 1.5 — system operacyjny dla parafii
 
 Mały system operacyjny napisany od zera (C + asembler) na komputery x86.
 Nie potrzebuje Windowsa ani Linuksa — startuje prosto z pendrive'a lub płyty.
 Przeznaczony na komputer w zakrystii, kancelarii albo do rzutnika/telewizora w kościele.
 
+![Pulpit AmenOS](zrzuty/0-pulpit.png)
+
+## Pulpit graficzny
+
+System startuje w trybie graficznym (1024×768 lub 800×600) z pulpitem obsługiwanym myszą:
+
+- **ikony** — podwójne kliknięcie uruchamia program,
+- **okna** — przeciąganie za belkę, minimalizowanie, zamykanie (także klawiszem Esc),
+- **pasek zadań** — menu Start, przyciski otwartych okien, zegar, data i kolor liturgiczny dnia,
+- **programy graficzne** — kalendarz liturgiczny (klikalny, z kolorami), zegar ze wskazówkami,
+  odtwarzacz muzyki mszalnej grający w tle, okno „O systemie”,
+- **Terminal** — dotychczasowa powłoka w oknie; wszystkie programy tekstowe (przeglądarka,
+  spowiedź, Komunia, tablica pieśni, modlitwy, ogłoszenia…) działają w nim i można je uruchamiać
+  ikonami z pulpitu albo z menu Start.
+
+Jeśli karta graficzna nie obsługuje trybu graficznego, w menu startowym GRUB-a jest pozycja
+**„AmenOS - tryb tekstowy”**, która uruchamia system jak dawniej (80×25 znaków).
+
 | | |
 |---|---|
+| ![Menu Start](zrzuty/0b-pulpit-menu.png) | ![Przeglądarka w oknie terminala](zrzuty/0c-pulpit-terminal.png) |
 | ![Ekran powitalny](zrzuty/1-powitanie.png) | ![Kalendarz miesiąca](zrzuty/3-miesiac.png) |
 | ![Tablica pieśni](zrzuty/4-tablica-piesni.png) | ![Komunia święta](zrzuty/10-komunia.png) |
 | ![Spowiedź](zrzuty/9-spowiedz-nauka.png) | ![Muzyka mszalna](zrzuty/11-muzyka.png) |
@@ -74,7 +93,9 @@ w niedzielę) i przenoszenie uroczystości (np. Zwiastowanie po oktawie Wielkano
 - Przeglądarka obsługuje zwykłe HTTP. Strony **HTTPS** (większość dzisiejszych) są otwierane
   przez zewnętrzny serwis [FrogFind](http://frogfind.com), który pobiera je i upraszcza do
   tekstu — adresy tych stron trafiają więc do tego serwisu. Brak JavaScriptu, formularzy i obrazków.
-- Brak myszy i grafiki — tylko tryb tekstowy 80×25.
+- Pulpit wymaga karty graficznej z VBE (praktycznie każda karta od ok. 2000 r., QEMU, VirtualBox)
+  i myszy PS/2 — mysz USB działa, jeśli BIOS ma włączoną emulację „USB Legacy Support”.
+  W VirtualBox ustaw w ustawieniach maszyny: System → Urządzenie wskazujące → **Mysz PS/2**.
 - Kalendarz jest **uproszczony**: zawiera wszystkie uroczystości i święta oraz
   najważniejsze wspomnienia, ale nie każde wspomnienie dowolne ani kalendarze
   diecezjalne. Do celów liturgicznych sprawdzaj z oficjalnym Ordo swojej diecezji.
@@ -93,7 +114,7 @@ make uruchom    # uruchamia w QEMU (z kartą sieciową e1000)
 src/boot.asm        start: nagłówek Multiboot, stos, skok do C
 src/kmain.c         główna funkcja jądra
 src/vga.c           ekran tekstowy VGA, polskie znaki wgrywane do pamięci czcionki, printf
-src/klawiatura.c    klawiatura PS/2, AltGr, edycja linii z historią
+src/klawiatura.c    klawiatura i mysz PS/2, AltGr, edycja linii z historią
 src/rtc.c           zegar CMOS
 src/dzwiek.c        czasomierz PIT i głośniczek PC
 src/muzyka_dane.h   nuty utworów (wygenerowane przez tools/gen_muzyka.py)
@@ -101,6 +122,9 @@ src/e1000.c         sterownik karty sieciowej Intel PRO/1000 (PCI)
 src/siec.c          stos sieciowy: ARP, IPv4, ICMP, UDP, DHCP, DNS, TCP
 src/przegladarka.c  przeglądarka: HTTP, HTML, linki, historia
 src/znaki_dane.h    kodowania ISO-8859-2 / Windows-1250 (tools/gen_znaki.py)
+src/fb.c            grafika: bufor ramki od GRUB-a (VBE), podwójne buforowanie, rysowanie
+src/gui.c           pulpit: okna, ikony, pasek zadań, menu Start, programy graficzne
+src/grafika_dane.h  czcionka 8x16, ikony i tabela sinusów (tools/gen_grafika.py)
 src/liturgia.c      kalendarz liturgiczny (Wielkanoc, okresy, pierwszeństwo obchodów)
 src/powloka.c       wiersz poleceń i plansze (pieśni, zegar, modlitwy, ogłoszenia, msze)
 src/lib.c           funkcje napisów i UTF-8 (system nie używa żadnej biblioteki C)

@@ -32,12 +32,84 @@ static int polska_litera(char c, int duza) {
     return 0;
 }
 
-int kbd_poll(void) {
-    u8 st = inb(0x64);
-    if (!(st & 1)) return -1;
-    u8 sc = inb(0x60);
-    if (st & 0x20) return -1;               /* dane z myszy - pomijamy */
+/* ---------- wspólny port 8042: klawiatura i mysz ---------- */
 
+static u8 kolejka[64];                      /* kody klawiszy czekające na odczyt */
+static int kol_od, kol_do;
+static u32 wstrzyk[128];                     /* znaki wstrzyknięte do terminala (z pulpitu) */
+static int wst_od, wst_do;
+static int mysz_jest;
+
+static void ps2_czekaj_zapis(void) { u32 t = zegar_ms(); while ((inb(0x64) & 2) && zegar_ms() - t < 50) ; }
+static int ps2_czekaj_odczyt(void) { u32 t = zegar_ms(); while (zegar_ms() - t < 100) if (inb(0x64) & 1) return 1; return 0; }
+
+static void mysz_pisz(u8 b) {
+    ps2_czekaj_zapis(); outb(0x64, 0xD4);
+    ps2_czekaj_zapis(); outb(0x60, b);
+    if (ps2_czekaj_odczyt()) inb(0x60);       /* potwierdzenie 0xFA */
+}
+
+void mysz_init(void) {
+    ps2_czekaj_zapis(); outb(0x64, 0xA8);    /* włącz port myszy */
+    ps2_czekaj_zapis(); outb(0x64, 0x20);
+    u8 cfg = ps2_czekaj_odczyt() ? inb(0x60) : 0x47;
+    cfg &= (u8)~0x20;                         /* zegar myszy włączony */
+    cfg &= (u8)~0x02;                         /* bez przerwań - system odpytuje */
+    ps2_czekaj_zapis(); outb(0x64, 0x60);
+    ps2_czekaj_zapis(); outb(0x60, cfg);
+    mysz_pisz(0xF6);                          /* ustawienia domyślne */
+    mysz_pisz(0xF4);                          /* nadawanie ruchów */
+    mysz_jest = 1;
+}
+
+static void mysz_bajt(u8 b) {
+    static u8 pak[3];
+    static int n;
+    if (n == 0 && !(b & 0x08)) return;       /* synchronizacja pakietu */
+    pak[n++] = b;
+    if (n < 3) return;
+    n = 0;
+    if (pak[0] & 0xC0) return;               /* przepełnienie */
+    int dx = (int)pak[1] - ((pak[0] << 4) & 0x100);
+    int dy = (int)pak[2] - ((pak[0] << 3) & 0x100);
+    if (gui_aktywne) gui_mysz(dx, -dy, pak[0] & 7);
+}
+
+void ps2_obsluz(void) {
+    for (int i = 0; i < 32; i++) {
+        u8 st = inb(0x64);
+        if (!(st & 1)) break;
+        u8 b = inb(0x60);
+        if (st & 0x20) { if (mysz_jest) mysz_bajt(b); }
+        else if (((kol_do + 1) & 63) != kol_od) { kolejka[kol_do] = b; kol_do = (kol_do + 1) & 63; }
+    }
+}
+
+void kbd_wstrzyknij(const char *s) {
+    while (*s && ((wst_do + 1) & 127) != wst_od) { wstrzyk[wst_do] = k_utf8_next(&s); wst_do = (wst_do + 1) & 127; }
+}
+
+static int dekoduj(u8 sc);
+
+int kbd_poll(void) {
+    if (gui_aktywne) gui_pompuj();
+    ps2_obsluz();
+    int dla_terminala = !gui_aktywne || gui_terminal_aktywny();
+    if (dla_terminala && wst_od != wst_do) {
+        u32 c = wstrzyk[wst_od]; wst_od = (wst_od + 1) & 127;
+        return (int)c;
+    }
+    while (kol_od != kol_do) {
+        u8 sc = kolejka[kol_od]; kol_od = (kol_od + 1) & 63;
+        int k = dekoduj(sc);
+        if (k < 0) continue;
+        if (!dla_terminala) { gui_klawisz(k); continue; }
+        return k;
+    }
+    return -1;
+}
+
+static int dekoduj(u8 sc) {
     if (sc == 0xE0) { e0 = 1; return -1; }
     if (e0) {
         e0 = 0;

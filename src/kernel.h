@@ -2,7 +2,7 @@
 #ifndef AMENOS_KERNEL_H
 #define AMENOS_KERNEL_H
 
-#define AMENOS_WERSJA "1.4"
+#define AMENOS_WERSJA "1.5"
 
 typedef unsigned char  u8;
 typedef unsigned short u16;
@@ -40,7 +40,9 @@ enum {
 #define VGA_H 25
 #define ATTR(fg, bg) ((u8)(((bg) << 4) | (fg)))
 
-void vga_init(void);
+void vga_init(int grafika);
+u16 *vga_bufor(void);
+int  vga_kursor_widoczny(void);
 void vga_clear(void);
 void vga_color(u8 fg, u8 bg);
 u8   vga_attr(void);
@@ -74,6 +76,9 @@ void ksprintf(char *out, u32 max, const char *fmt, ...);
 #define KEY_F10    0x1012
 
 int  kbd_poll(void);                    /* -1 gdy brak klawisza */
+void ps2_obsluz(void);                  /* odbiera bajty z portu 8042 (klawiatura + mysz) */
+void mysz_init(void);
+void kbd_wstrzyknij(const char *s);     /* wpisuje tekst do terminala, jakby z klawiatury */
 int  kbd_getkey(void);                  /* czeka na klawisz */
 int  kbd_readline(char *buf, int max);  /* linia z historią, UTF-8; -1 = przerwano (F10) */
 extern int kbd_historia;
@@ -152,6 +157,46 @@ void tcp_zamknij(void);
 void przegladarka(const char *adres);
 void cmd_siec(char *p);
 void cmd_ping(char *arg);
+
+/* ---------- grafika (fb.c) ---------- */
+#define FB_PRZEZR 0xFF000000u
+extern int fb_jest, fb_w, fb_h;
+int  fb_init(const u32 *mbi, u32 koniec_jadra, u32 pamiec_kb);
+void fb_klip(int x, int y, int w, int h);
+void fb_klip_caly(void);
+void fb_klip_zawez(int x, int y, int w, int h);
+void fb_klip_pobierz(int *x, int *y, int *w, int *h);
+void fb_piksel(int x, int y, u32 c);
+u32  fb_mieszaj(u32 a, u32 b, int alfa);
+void fb_prost(int x, int y, int w, int h, u32 c);
+void fb_prost_alfa(int x, int y, int w, int h, u32 c, int alfa);
+void fb_prost_zaokr(int x, int y, int w, int h, int r, u32 c);
+void fb_ramka(int x, int y, int w, int h, u32 c);
+void fb_gradient(int x, int y, int w, int h, u32 c1, u32 c2);
+void fb_linia(int x0, int y0, int x1, int y1, u32 c, int grubosc);
+void fb_kolo(int cx, int cy, int r, u32 c);
+void fb_okrag(int cx, int cy, int r, u32 c, int grubosc);
+void fb_znak(int x, int y, u8 g, u32 kolor, u32 tlo, int skala);
+int  fb_tekst(int x, int y, const char *s, u32 kolor, u32 tlo, int skala);
+int  fb_tekst_szer(const char *s, int skala);
+int  fb_tekst_zawin(int x, int y, const char *s, int max_znakow, u32 kolor, int odstep);
+void fb_ikona(int x, int y, const u32 *piks, int skala);
+const u32 *fb_ikona_nr(int nr);
+int  fb_sinus(int i);                   /* i = 0..59, wynik * 1000 */
+void fb_wyslij(int x, int y, int w, int h);
+
+/* ---------- pulpit (gui.c) ---------- */
+extern int gui_aktywne;
+extern int powloka_czeka;               /* powłoka czeka na polecenie */
+void gui_init(u32 pamiec_kb);
+void gui_powitanie(void);
+void gui_pompuj(void);
+void gui_mysz(int dx, int dy, int przyciski);
+void gui_klawisz(int k);
+int  gui_terminal_aktywny(void);
+
+/* ---------- muzyka (wspólne) ---------- */
+typedef struct { const char *tytul, *czesc, *opis; const u8 *nuty; const u16 *czasy; int n; } utwor_t;
 
 /* ---------- powłoka (powloka.c) ---------- */
 void powloka(u32 mem_kb);

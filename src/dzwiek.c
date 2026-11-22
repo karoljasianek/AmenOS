@@ -31,7 +31,7 @@ u32 zegar_ms(void) {
 
 void czekaj_ms(u32 ms) {
     u32 t0 = zegar_ms();
-    while (zegar_ms() - t0 < ms) ;
+    while (zegar_ms() - t0 < ms) if (gui_aktywne) gui_pompuj();
 }
 
 void glosnik_ton(u32 hz) {

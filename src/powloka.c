@@ -576,7 +576,6 @@ static void cmd_ogloszenia(char *p) {
 /*  Muzyka mszalna                                                         */
 /* ====================================================================== */
 
-typedef struct { const char *tytul, *czesc, *opis; const u8 *nuty; const u16 *czasy; int n; } utwor_t;
 #include "muzyka_dane.h"
 
 static const char *nazwy_nut[12] = { "C", "Cis", "D", "Dis", "E", "F", "Fis", "G", "Gis", "A", "B", "H" };
@@ -1243,7 +1242,9 @@ void powloka(u32 mem_kb) {
         vga_color(ZOLTY, CZARNY); kprintf("amen");
         vga_color(BIALY, CZARNY); kprintf("> ");
         vga_color(SZARY, CZARNY);
+        powloka_czeka = 1;
         kbd_readline(linia, sizeof linia);
+        powloka_czeka = 0;
         char *p = linia;
         char *cmd = k_token(&p);
         if (!cmd) continue;

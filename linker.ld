@@ -7,5 +7,6 @@ SECTIONS
     .rodata BLOCK(4K) : ALIGN(4K) { *(.rodata*) }
     .data BLOCK(4K) : ALIGN(4K) { *(.data*) }
     .bss BLOCK(4K) : ALIGN(4K) { *(COMMON) *(.bss*) }
+    koniec_jadra = .;
     /DISCARD/ : { *(.comment) *(.eh_frame) *(.note*) }
 }
