@@ -96,6 +96,10 @@ IKONY = {
   ".......y........", "......yyy.......", ".......y........", "......www.......", ".....wwwww......",
   "....wwwwwww.....", "....wwwkwww.....", "....wwwkwww.....", "..wwwwwwwwwww...", "..wwwwwwwwwww...",
   "..wkwwwwwwwkw...", "..wkwwwkwwwkw...", "..wwwwwkwwwww...", "..wwwwwkwwwww...", "GGGGGGGGGGGGGGG.", "................"],
+ "kalkulator": [
+  "................", "..gggggggggggg..", "..gddddddddddg..", "..gdGGGGyGGGdg..", "..gdGGGyyyGGdg..",
+  "..gdGGGGyGGGdg..", "..gddddddddddg..", "..gdwwdwwdyydg..", "..gddddddddddg..", "..gdwwdwwdyydg..",
+  "..gddddddddddg..", "..gdwwdwwdyydg..", "..gddddddddddg..", "..gdwwdwwdvvdg..", "..gggggggggggg..", "................"],
  "system": [
   "................", ".......yy.......", ".......yy.......", ".......yy.......", "....yyyyyyyy....",
   "....yyyyyyyy....", ".......yy.......", ".......yy.......", ".......yy.......", ".......yy.......",

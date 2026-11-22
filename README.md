@@ -18,6 +18,13 @@ System startuje w trybie graficznym (1024×768 lub 800×600) z pulpitem obsługi
 - **przeglądarka graficzna** — strony z nagłówkami, linkami do klikania, listami, tabelami
   i **obrazkami** (JPEG, PNG, GIF, BMP), pole adresu, wstecz/dalej, przewijanie, adres linku
   pod myszą; strony HTTPS przez FrogFind (jak w przeglądarce tekstowej),
+- **Kalkulator biblijny** — zwykły kalkulator (+ − × ÷, √, ±, przecinek, do 13 cyfr), który
+  rozpoznaje liczby z Pisma Świętego: wynik 12 przypomina Dwunastu Apostołów (Mt 10,1-4), 153 —
+  ryby z J 21,11, 77 — przebaczenie (Mt 18,22) itd. (prawie 30 liczb). Przycisk C nazywa się
+  **„Przebacz”** i odpuszcza wszystkie błędy; są też przyciski **Dziesięcina** (10%),
+  **Rozmnóż ×1000** (jak pięć chlebów), **Do Wielkanocy** i **Do Bożego Narodzenia** (ile dni
+  zostało, liczone z zegara komputera) oraz **liczby rzymskie** (MMXXVI). Dzielenie przez zero:
+  „Nieskończony jest tylko Bóg”. Działa też z klawiatury (cyfry, + - * /, Enter, Backspace, C, R),
 - **Terminal** — dotychczasowa powłoka w oknie; wszystkie programy tekstowe (przeglądarka,
   spowiedź, Komunia, tablica pieśni, modlitwy, ogłoszenia…) działają w nim i można je uruchamiać
   ikonami z pulpitu albo z menu Start.
@@ -33,7 +40,7 @@ Jeśli karta graficzna nie obsługuje trybu graficznego, w menu startowym GRUB-a
 | ![Tablica pieśni](zrzuty/4-tablica-piesni.png) | ![Komunia święta](zrzuty/10-komunia.png) |
 | ![Spowiedź](zrzuty/9-spowiedz-nauka.png) | ![Muzyka mszalna](zrzuty/11-muzyka.png) |
 | ![Przeglądarka](zrzuty/12-przegladarka.png) | ![Strona startowa przeglądarki](zrzuty/13-przegladarka-start.png) |
-| ![Urządzenia USB](zrzuty/14-usb.png) | |
+| ![Urządzenia USB](zrzuty/14-usb.png) | ![Kalkulator biblijny](zrzuty/16-kalkulator.png) |
 
 ## Co potrafi
 
@@ -146,6 +153,7 @@ src/przegladarka.c  przeglądarka: HTTP, HTML, linki, historia
 src/znaki_dane.h    kodowania ISO-8859-2 / Windows-1250 (tools/gen_znaki.py)
 src/fb.c            grafika: bufor ramki od GRUB-a (VBE), podwójne buforowanie, rysowanie
 src/gui.c           pulpit: okna, ikony, pasek zadań, menu Start, programy graficzne
+src/kalkulator.c    kalkulator biblijny (liczby stałoprzecinkowe 64-bitowe)
 src/grafika_dane.h  czcionka 8x16, ikony i tabela sinusów (tools/gen_grafika.py)
 src/liturgia.c      kalendarz liturgiczny (Wielkanoc, okresy, pierwszeństwo obchodów)
 src/powloka.c       wiersz poleceń i plansze (pieśni, zegar, modlitwy, ogłoszenia, msze)

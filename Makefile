@@ -3,13 +3,14 @@ CC      = gcc
 CFLAGS  = -m32 -std=gnu11 -ffreestanding -fno-pic -fno-pie -fno-stack-protector \
           -fno-builtin -nostdlib -mno-sse -mno-mmx -mno-80387 -O2 -Wall -Wextra
 LDFLAGS = -m elf_i386 -T linker.ld -nostdlib
+LIBGCC  := $(shell $(CC) -m32 -print-libgcc-file-name)
 
 OBJS = build/boot.o build/kmain.o build/vga.o build/klawiatura.o build/rtc.o \
        build/liturgia.o build/powloka.o build/lib.o build/dzwiek.o \
        build/e1000.o build/siec.o build/przegladarka.o \
        build/fb.o build/gui.o \
        build/pci.o build/usb.o build/xhci.o build/uhci.o \
-       build/obrazy.o build/www_gui.o
+       build/obrazy.o build/www_gui.o build/kalkulator.o
 
 all: amenos.iso
 
@@ -26,11 +27,11 @@ build:
 	mkdir -p build
 
 iso/boot/amenos.bin: $(OBJS) linker.ld
-	ld $(LDFLAGS) -o $@ $(OBJS)
+	ld $(LDFLAGS) -o $@ $(OBJS) $(LIBGCC)
 	grub-file --is-x86-multiboot $@
 
 iso/boot/amenos-tekst.bin: $(filter-out build/boot.o,$(OBJS)) build/boot_tekst.o linker.ld
-	ld $(LDFLAGS) -o $@ build/boot_tekst.o $(filter-out build/boot.o,$(OBJS))
+	ld $(LDFLAGS) -o $@ build/boot_tekst.o $(filter-out build/boot.o,$(OBJS)) $(LIBGCC)
 	grub-file --is-x86-multiboot $@
 
 amenos.iso: iso/boot/amenos.bin iso/boot/amenos-tekst.bin iso/boot/grub/grub.cfg

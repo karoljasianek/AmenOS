@@ -32,7 +32,7 @@ static u32 tekst_na_lit(int k) { return (k == KOL_BIALY || k == KOL_ROZOWY) ? 0x
 
 /* ---------- okna ---------- */
 
-enum { O_TERMINAL, O_KALENDARZ, O_ZEGAR, O_MUZYKA, O_INFO, O_WWW, O_KOMUNIKAT, O_N };
+enum { O_TERMINAL, O_KALENDARZ, O_ZEGAR, O_MUZYKA, O_INFO, O_WWW, O_KALK, O_KOMUNIKAT, O_N };
 typedef struct { int x, y, cw, ch; const char *tytul; int ikona, otwarte, zminim; } okno_t;
 static okno_t okna[O_N] = {
     { 0, 0, 640, 400, "Terminal",              0, 0, 0 },
@@ -41,6 +41,7 @@ static okno_t okna[O_N] = {
     { 0, 0, 440, 336, "Muzyka mszalna",        4, 0, 0 },
     { 0, 0, 420, 236, "O systemie",           11, 0, 0 },
     { 0, 0, 860, 660, "Przeglądarka",          5, 0, 0 },
+    { 0, 0, 326, 540, "Kalkulator biblijny",  12, 0, 0 },
     { 0, 0, 380, 132, "AmenOS",               11, 0, 0 },
 };
 static int z[O_N], zn;                      /* kolejność od spodu do wierzchu */
@@ -68,6 +69,16 @@ void wwwg_tik(void);
 void wwwg_otworz(const char *url);
 const char *wwwg_tytul(void);
 static int www_start;
+
+/* kalkulator biblijny (kalkulator.c) */
+void kalk_init(int cw, int ch);
+void kalk_rysuj(int x, int y);
+void kalk_klik(int lx, int ly);
+void kalk_puszczenie(void);
+void kalk_klawisz(int k);
+int  kalk_szer(void);
+int  kalk_wys(void);
+void gui_kalk_brudne(int x, int y, int w, int h);
 
 static czas_t dzis;
 static dzien_lit_t dzis_lit;
@@ -135,6 +146,9 @@ void gui_www_brudne(int x, int y, int w, int h) {
 }
 static void komponuj(void);
 void gui_rysuj_teraz(void) { if (brud) komponuj(); }
+void gui_kalk_brudne(int x, int y, int w, int h) {
+    if (widoczne(O_KALK)) brudne(okna[O_KALK].x + BR + x, okna[O_KALK].y + TB + y, w, h);
+}
 int gui_www_aktywne(void) { return !menu_otwarte && okno_aktywne() == O_WWW; }
 
 /* ---------- elementy wspólne ---------- */
@@ -458,13 +472,14 @@ static void rysuj_komunikat(int x, int y) {
 /* ====================================================================== */
 
 enum { A_TERMINAL, A_KALENDARZ, A_ZEGAR, A_PIESNI, A_MUZYKA, A_WWW, A_MODLITWY, A_SPOWIEDZ, A_KOMUNIA,
-       A_OGLOSZENIA, A_MSZE, A_INFO, A_DZIS, A_RESTART, A_WYLACZ, A_ODSTEP, A_WWW_TEKST };
+       A_OGLOSZENIA, A_MSZE, A_INFO, A_DZIS, A_RESTART, A_WYLACZ, A_ODSTEP, A_WWW_TEKST, A_KALK };
 
 static const struct { const char *nazwa; int ikona, akcja; } ikony[] = {
     { "Terminal", 0, A_TERMINAL }, { "Kalendarz", 1, A_KALENDARZ }, { "Zegar", 2, A_ZEGAR },
     { "Pieśni", 3, A_PIESNI }, { "Muzyka", 4, A_MUZYKA }, { "Internet", 5, A_WWW },
     { "Modlitwy", 6, A_MODLITWY }, { "Spowiedź", 7, A_SPOWIEDZ }, { "Komunia", 8, A_KOMUNIA },
-    { "Ogłoszenia", 9, A_OGLOSZENIA }, { "Msze", 10, A_MSZE }, { "O systemie", 11, A_INFO },
+    { "Ogłoszenia", 9, A_OGLOSZENIA }, { "Msze", 10, A_MSZE }, { "Kalkulator", 12, A_KALK },
+    { "O systemie", 11, A_INFO },
 };
 #define IKONY_N ((int)(sizeof ikony / sizeof ikony[0]))
 #define IK_W 84
@@ -482,6 +497,7 @@ static const struct { const char *nazwa; int ikona, akcja; } menu[] = {
     { "Przeglądarka", 5, A_WWW }, { "Przeglądarka tekstowa", 0, A_WWW_TEKST },
     { "Modlitwy", 6, A_MODLITWY }, { "Spowiedź", 7, A_SPOWIEDZ },
     { "Komunia święta", 8, A_KOMUNIA }, { "Ogłoszenia", 9, A_OGLOSZENIA }, { "Porządek Mszy", 10, A_MSZE },
+    { "Kalkulator biblijny", 12, A_KALK },
     { "O systemie", 11, A_INFO }, { 0, -1, A_ODSTEP },
     { "Uruchom ponownie", -1, A_RESTART }, { "Wyłącz komputer", -1, A_WYLACZ },
 };
@@ -516,6 +532,7 @@ static void uruchom(int a) {
         if (!www_start) { www_start = 1; wwwg_otworz("about:start"); }
         break;
     case A_WWW_TEKST:  polecenie("www"); break;
+    case A_KALK:       okno_otworz(O_KALK); break;
     case A_MODLITWY:   polecenie("modlitwy"); break;
     case A_SPOWIEDZ:   polecenie("spowiedz"); break;
     case A_KOMUNIA:    polecenie("komunia"); break;
@@ -601,6 +618,7 @@ static void rysuj_okno(int i) {
     case O_INFO:      rysuj_info(cx, cy); break;
     case O_KOMUNIKAT: rysuj_komunikat(cx, cy); break;
     case O_WWW:       wwwg_rysuj(cx, cy); break;
+    case O_KALK:      kalk_rysuj(cx, cy); break;
     }
     fb_klip(kx, ky, kw, kh);
 }
@@ -738,6 +756,7 @@ static void klik(int x, int y) {
             if (i == O_KALENDARZ) klik_kalendarz(lx, ly);
             else if (i == O_MUZYKA) klik_muzyka(lx, ly);
             else if (i == O_WWW) { klient_ciag = O_WWW; wwwg_klik(lx, ly); }
+            else if (i == O_KALK) { klient_ciag = O_KALK; kalk_klik(lx, ly); }
             else if (i == O_KOMUNIKAT && w_prost(lx, ly, o->cw - 96, o->ch - 40, 84, 28)) okno_zamknij(i);
         }
         return;
@@ -784,6 +803,7 @@ void gui_mysz(int dx, int dy, int przyciski) {
     if (!(przyciski & 1)) {
         ciagniete = -1;
         if (klient_ciag == O_WWW) wwwg_puszczenie();
+        if (klient_ciag == O_KALK) kalk_puszczenie();
         klient_ciag = -1;
         /* link pod myszą w przeglądarce */
         int nad = -1;
@@ -806,6 +826,7 @@ void gui_klawisz(int k) {
     int a = okno_aktywne();
     if (a < 0) return;
     if (a == O_WWW) { wwwg_klawisz(k); return; }
+    if (a == O_KALK && k != KEY_ESC) { kalk_klawisz(k); return; }
     if (k == KEY_ESC) { okno_zamknij(a); return; }
     if (a == O_KALENDARZ) {
         if (k == KEY_LEFT || k == KEY_PGUP) kal_zmien_mies(-1);
@@ -872,6 +893,9 @@ void gui_init(u32 pam) {
     okna[O_WWW].x = (fb_w - ow(O_WWW)) / 2 + (fb_w >= 1000 ? 50 : 0);
     okna[O_WWW].y = 8;
     wwwg_init(okna[O_WWW].cw, okna[O_WWW].ch);
+    okna[O_KALK].cw = kalk_szer(); okna[O_KALK].ch = kalk_wys();
+    okna[O_KALK].x = fb_w - ow(O_KALK) - 40; okna[O_KALK].y = obszar_h - oh(O_KALK) > 30 ? 30 : 0;
+    kalk_init(okna[O_KALK].cw, okna[O_KALK].ch);
     for (int i = 0; i < O_N; i++) {
         if (okna[i].x < 0) okna[i].x = 0;
         if (okna[i].y + oh(i) > obszar_h) okna[i].y = obszar_h - oh(i) > 0 ? obszar_h - oh(i) : 0;

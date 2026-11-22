@@ -189,7 +189,8 @@ void fb_ikona(int x, int y, const u32 *piks, int skala) {
 
 const u32 *fb_ikona_nr(int nr) {
     static const u32 *const tab[] = { ikona_terminal, ikona_kalendarz, ikona_zegar, ikona_piesni, ikona_muzyka,
-        ikona_internet, ikona_modlitwy, ikona_spowiedz, ikona_komunia, ikona_ogloszenia, ikona_msze, ikona_system };
+        ikona_internet, ikona_modlitwy, ikona_spowiedz, ikona_komunia, ikona_ogloszenia, ikona_msze, ikona_system,
+        ikona_kalkulator };
     return tab[nr];
 }
 

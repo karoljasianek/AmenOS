@@ -2,7 +2,7 @@
 #ifndef AMENOS_KERNEL_H
 #define AMENOS_KERNEL_H
 
-#define AMENOS_WERSJA "1.7"
+#define AMENOS_WERSJA "1.8"
 
 typedef unsigned char  u8;
 typedef unsigned short u16;
