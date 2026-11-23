@@ -26,7 +26,7 @@ def tablica(typ, nazwa, dane, na_wiersz=24, fmt="0x%02X"):
 # ---------------------------------------------------------------- czcionki
 
 PELNY = [chr(c) for c in range(0x20, 0x7F)] + [chr(c) for c in range(0xA0, 0x180)] + \
-        list("–—‘’‚“”„…·•°×÷−√±†‰€←→↑↓►◄■♫♪✝⌂▲▼✓") + list("ΑΒΓΔΩαβγδπωЀАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя")
+        list("–—‘’‚“”„…·•°×÷−√±†‰€←→↑↓►◄■♫♪✝⌂▲▼✓∞↩") + list("ΑΒΓΔΩαβγδπωЀАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя")
 OGRANICZONY = [chr(c) for c in range(0x20, 0x7F)] + list("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ–—·…×÷−√±„”°")
 
 CZCIONKI = [   # nazwa w C, plik, rozmiar, zestaw znaków
@@ -242,6 +242,12 @@ def s_kalkulator(d, im):
             col = (40, 170, 100, 255) if c == 2 else (190, 205, 198, 255)
             d.rounded_rectangle((64 + c * 23, 88 + r * 22, 80 + c * 23, 102 + r * 22), 4, fill=col)
 
+def s_zadania(d, im):
+    d.rounded_rectangle((40, 44, 152, 148), 12, outline=B, width=8)
+    for i, h in enumerate((40, 64, 28, 52)):
+        d.rounded_rectangle((58 + i * 22, 132 - h, 72 + i * 22, 132), 3, fill=B)
+    d.line((52, 160, 140, 160), fill=(255, 255, 255, 180), width=6)
+
 def ik_kalendarz():
     tlo, maska = kafel(hexc(0xFFFFFF), hexc(0xE6E8EE))
     pas = Image.new("RGBA", (S, S), (0, 0, 0, 0))
@@ -267,6 +273,7 @@ IKONY = [  # kolejność jak w fb_ikona_nr
     ("msze",       0x7484FF, 0x3F4ED4, s_msze),
     ("system",     0x2C4C8C, 0x121F42, s_system),
     ("kalkulator", 0x45DB93, 0x1C9A5B, s_kalkulator),
+    ("zadania",    0x5E7396, 0x2E3B57, s_zadania),
 ]
 duze = []
 for nazwa, g, dl, rys in IKONY:

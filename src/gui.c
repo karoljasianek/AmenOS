@@ -9,6 +9,7 @@
  * pasek zadań z ikonami pośrodku, kolor akcentu = kolor liturgiczny dnia. */
 #include "kernel.h"
 #include "muzyka_dane.h"
+#include "apki.h"
 
 int gui_aktywne;
 int powloka_czeka;
@@ -51,17 +52,18 @@ static u32 akcent(void) { return akcent_lit(dzis_lit.kolor); }
 
 /* ---------- okna ---------- */
 
-enum { O_TERMINAL, O_KALENDARZ, O_ZEGAR, O_MUZYKA, O_INFO, O_WWW, O_KALK, O_KOMUNIKAT, O_N };
+enum { O_TERMINAL, O_KALENDARZ, O_ZEGAR, O_MUZYKA, O_INFO, O_WWW, O_KALK, O_APKA, O_KOMUNIKAT = O_APKA + AP_N, O_N };
+#define JEST_APKA(i) ((i) >= O_APKA && (i) < O_APKA + AP_N)
 typedef struct { int x, y, cw, ch; const char *tytul; int ikona, otwarte, zminim; } okno_t;
-static okno_t okna[O_N] = {
-    { 0, 0, 80 * TERM_W + 2 * TPX, 25 * TERM_H + 2 * TPY, "Terminal", 0, 0, 0 },
-    { 0, 0, 380, 470, "Kalendarz liturgiczny", 1, 0, 0 },
-    { 0, 0, 300, 380, "Zegar",                 2, 0, 0 },
-    { 0, 0, 500, 400, "Muzyka mszalna",        4, 0, 0 },
-    { 0, 0, 480, 270, "O systemie",           11, 0, 0 },
-    { 0, 0, 960, 700, "Przeglądarka",          5, 0, 0 },
-    { 0, 0, 326, 540, "Kalkulator biblijny",  12, 0, 0 },
-    { 0, 0, 440, 160, "AmenOS",               11, 0, 0 },
+static okno_t okna[O_N] = {        /* okna programów z aplikacje.c (O_APKA...) uzupełnia gui_init */
+    [O_TERMINAL]  = { 0, 0, 80 * TERM_W + 2 * TPX, 25 * TERM_H + 2 * TPY, "Terminal", 0, 0, 0 },
+    [O_KALENDARZ] = { 0, 0, 380, 470, "Kalendarz liturgiczny", 1, 0, 0 },
+    [O_ZEGAR]     = { 0, 0, 300, 380, "Zegar",                 2, 0, 0 },
+    [O_MUZYKA]    = { 0, 0, 500, 400, "Muzyka mszalna",        4, 0, 0 },
+    [O_INFO]      = { 0, 0, 480, 270, "O systemie",           11, 0, 0 },
+    [O_WWW]       = { 0, 0, 960, 700, "Przeglądarka",          5, 0, 0 },
+    [O_KALK]      = { 0, 0, 326, 540, "Kalkulator biblijny",  12, 0, 0 },
+    [O_KOMUNIKAT] = { 0, 0, 440, 160, "AmenOS",               11, 0, 0 },
 };
 static int z[O_N], zn;                      /* kolejność od spodu do wierzchu */
 
@@ -135,6 +137,7 @@ static void okno_podnies(int i) {
 
 static void okno_otworz(int i) {
     int stare = okno_aktywne();
+    if (JEST_APKA(i) && !okna[i].otwarte) apki[i - O_APKA].otwarte();
     okna[i].otwarte = 1;
     okna[i].zminim = 0;
     okno_podnies(i);
@@ -151,6 +154,7 @@ static void okno_zamknij(int i) {
     for (; k < zn - 1; k++) z[k] = z[k + 1];
     if (zn && k <= zn - 1) zn--;
     if (i == O_MUZYKA) muzyka_stop();
+    if (JEST_APKA(i)) apki[i - O_APKA].zamkniete();
     int a = okno_aktywne();
     if (a >= 0) okno_brudne(a);
     brudny_pasek();
@@ -522,14 +526,14 @@ static void rysuj_komunikat(int x, int y) {
 /* ====================================================================== */
 
 enum { A_TERMINAL, A_KALENDARZ, A_ZEGAR, A_PIESNI, A_MUZYKA, A_WWW, A_MODLITWY, A_SPOWIEDZ, A_KOMUNIA,
-       A_OGLOSZENIA, A_MSZE, A_INFO, A_DZIS, A_RESTART, A_WYLACZ, A_ODSTEP, A_WWW_TEKST, A_KALK };
+       A_OGLOSZENIA, A_MSZE, A_INFO, A_DZIS, A_RESTART, A_WYLACZ, A_ODSTEP, A_WWW_TEKST, A_KALK, A_ZADANIA };
 
 static const struct { const char *nazwa; int ikona, akcja; } ikony[] = {
     { "Terminal", 0, A_TERMINAL }, { "Kalendarz", 1, A_KALENDARZ }, { "Zegar", 2, A_ZEGAR },
     { "Pieśni", 3, A_PIESNI }, { "Muzyka", 4, A_MUZYKA }, { "Internet", 5, A_WWW },
     { "Modlitwy", 6, A_MODLITWY }, { "Spowiedź", 7, A_SPOWIEDZ }, { "Komunia", 8, A_KOMUNIA },
     { "Ogłoszenia", 9, A_OGLOSZENIA }, { "Msze", 10, A_MSZE }, { "Kalkulator", 12, A_KALK },
-    { "O systemie", 11, A_INFO },
+    { "Zadania", 13, A_ZADANIA }, { "O systemie", 11, A_INFO },
 };
 #define IKONY_N ((int)(sizeof ikony / sizeof ikony[0]))
 #define IK_W 96
@@ -546,7 +550,8 @@ static const struct { const char *nazwa; int ikona, akcja; } menu[] = {
     { "Dziś", 1, A_DZIS }, { "Zegar", 2, A_ZEGAR }, { "Muzyka", 4, A_MUZYKA },
     { "Pieśni", 3, A_PIESNI }, { "Modlitwy", 6, A_MODLITWY }, { "Spowiedź", 7, A_SPOWIEDZ },
     { "Komunia", 8, A_KOMUNIA }, { "Ogłoszenia", 9, A_OGLOSZENIA }, { "Msze", 10, A_MSZE },
-    { "Kalkulator", 12, A_KALK }, { "WWW tekst", 0, A_WWW_TEKST }, { "O systemie", 11, A_INFO },
+    { "Kalkulator", 12, A_KALK }, { "Zadania", 13, A_ZADANIA }, { "WWW tekst", 0, A_WWW_TEKST },
+    { "O systemie", 11, A_INFO },
 };
 #define MENU_N ((int)(sizeof menu / sizeof menu[0]))
 #define MENU_W 652
@@ -563,13 +568,19 @@ static int menu_lit_y(void) { return MENU_SIATKA_Y + ((MENU_N + MENU_KOL - 1) / 
 static void menu_brudne(void) { brudne(menu_x() - 30, menu_y() - 24, MENU_W + 60, menu_wys() + 60); }
 
 /* pasek zadań: przypięte programy (okna) pośrodku */
-static const int PASEK_APPS[] = { O_TERMINAL, O_WWW, O_KALENDARZ, O_ZEGAR, O_MUZYKA, O_KALK, O_INFO };
-#define PASEK_APPS_N ((int)(sizeof PASEK_APPS / sizeof PASEK_APPS[0]))
+static const int PRZYPIETE[] = { O_TERMINAL, O_WWW, O_KALENDARZ, O_ZEGAR, O_MUZYKA, O_KALK };
+#define PRZYPIETE_N ((int)(sizeof PRZYPIETE / sizeof PRZYPIETE[0]))
+#define PASEK_APPS_N O_N
 #define PB 48                                  /* przycisk na pasku */
-static int pasek_lista(int *lista) {           /* przycisk 0 = Start */
+static int pasek_lista(int *lista) {           /* przypięte programy, potem pozostałe otwarte okna */
     int n = 0;
-    for (int i = 0; i < PASEK_APPS_N; i++)
-        if (PASEK_APPS[i] != O_INFO || okna[O_INFO].otwarte) lista[n++] = PASEK_APPS[i];
+    for (int i = 0; i < PRZYPIETE_N; i++) lista[n++] = PRZYPIETE[i];
+    for (int i = 0; i < O_N; i++) {
+        if (i == O_KOMUNIKAT || !okna[i].otwarte) continue;
+        int jest = 0;
+        for (int k = 0; k < PRZYPIETE_N; k++) if (PRZYPIETE[k] == i) jest = 1;
+        if (!jest) lista[n++] = i;
+    }
     return n;
 }
 static int pasek_x0(int n) { return (fb_w - (n + 1) * (PB + 4)) / 2; }
@@ -587,19 +598,20 @@ static void uruchom(int a) {
     case A_ZEGAR:      okno_otworz(O_ZEGAR); break;
     case A_MUZYKA:     okno_otworz(O_MUZYKA); break;
     case A_INFO:       okno_otworz(O_INFO); break;
-    case A_DZIS:       polecenie("dzis"); break;
-    case A_PIESNI:     polecenie("piesni"); break;
+    case A_DZIS:       uruchom(A_KALENDARZ); break;
+    case A_PIESNI:     okno_otworz(O_APKA + AP_PIESNI); break;
     case A_WWW:
         okno_otworz(O_WWW);
         if (!www_start) { www_start = 1; wwwg_otworz("about:start"); }
         break;
     case A_WWW_TEKST:  polecenie("www"); break;
     case A_KALK:       okno_otworz(O_KALK); break;
-    case A_MODLITWY:   polecenie("modlitwy"); break;
-    case A_SPOWIEDZ:   polecenie("spowiedz"); break;
-    case A_KOMUNIA:    polecenie("komunia"); break;
-    case A_OGLOSZENIA: polecenie("ogloszenia"); break;
-    case A_MSZE:       polecenie("msze"); break;
+    case A_MODLITWY:   okno_otworz(O_APKA + AP_MODLITWY); break;
+    case A_SPOWIEDZ:   okno_otworz(O_APKA + AP_SPOWIEDZ); break;
+    case A_KOMUNIA:    okno_otworz(O_APKA + AP_KOMUNIA); break;
+    case A_OGLOSZENIA: okno_otworz(O_APKA + AP_OGLOSZENIA); break;
+    case A_MSZE:       okno_otworz(O_APKA + AP_MSZE); break;
+    case A_ZADANIA:    okno_otworz(O_APKA + AP_ZADANIA); break;
     case A_RESTART:    while (inb(0x64) & 2) ; outb(0x64, 0xFE); break;
     case A_WYLACZ:     wylacz(); break;
     }
@@ -701,6 +713,7 @@ static void rysuj_okno(int i) {
     case O_KOMUNIKAT: rysuj_komunikat(cx, cy); break;
     case O_WWW:       wwwg_rysuj(cx, cy); break;
     case O_KALK:      kalk_rysuj(cx, cy); break;
+    default:          if (JEST_APKA(i)) apki[i - O_APKA].rysuj(cx, cy); break;
     }
     fb_klip(kx, ky, kw, kh);
     fb_rogi_przywroc(x, y, w, h, R_OKNA, FB_PRZEZR);
@@ -855,8 +868,8 @@ static void klik_pasek(int x) {
         if (k == 0) { menu_otwarte = !menu_otwarte; menu_brudne(); brudny_pasek(); return; }
         int i = lista[k - 1];
         if (!okna[i].otwarte) {
-            static const int akcja[O_N] = { A_TERMINAL, A_KALENDARZ, A_ZEGAR, A_MUZYKA, A_INFO, A_WWW, A_KALK, -1 };
-            uruchom(akcja[i]);
+            static const int akcja[O_APKA] = { A_TERMINAL, A_KALENDARZ, A_ZEGAR, A_MUZYKA, A_INFO, A_WWW, A_KALK };
+            if (i < O_APKA) uruchom(akcja[i]); else okno_otworz(i);
         } else if (okno_aktywne() == i) okno_minimalizuj(i);
         else { okna[i].zminim = 0; okno_podnies(i); }
         return;
@@ -904,6 +917,7 @@ static void klik(int x, int y) {
             else if (i == O_MUZYKA) klik_muzyka(lx, ly);
             else if (i == O_WWW) { klient_ciag = O_WWW; wwwg_klik(lx, ly); }
             else if (i == O_KALK) { klient_ciag = O_KALK; kalk_klik(lx, ly); }
+            else if (JEST_APKA(i)) apki[i - O_APKA].klik(lx, ly);
             else if (i == O_KOMUNIKAT && w_prost(lx, ly, o->cw - 116, o->ch - 52, 96, 34)) okno_zamknij(i);
         }
         return;
@@ -1038,6 +1052,7 @@ void gui_klawisz(int k) {
     if (a < 0) return;
     if (a == O_WWW) { wwwg_klawisz(k); return; }
     if (a == O_KALK && k != KEY_ESC) { kalk_klawisz(k); return; }
+    if (JEST_APKA(a)) { if (!apki[a - O_APKA].klawisz(k) && k == KEY_ESC) okno_zamknij(a); return; }
     if (k == KEY_ESC) { okno_zamknij(a); return; }
     if (a == O_KALENDARZ) {
         if (k == KEY_LEFT || k == KEY_PGUP) kal_zmien_mies(-1);
@@ -1049,6 +1064,34 @@ void gui_klawisz(int k) {
         else if (k == ' ') muzyka_stop();
     } else if (a == O_KOMUNIKAT && k == KEY_ENTER) okno_zamknij(a);
 }
+
+/* ====================================================================== */
+/*  Usługi pulpitu dla programów (aplikacje.c)                             */
+/* ====================================================================== */
+
+void gui_apka_brudne(int a, int x, int y, int w, int h) {
+    int i = O_APKA + a;
+    if (widoczne(i)) brudne(okna[i].x + BR + x, okna[i].y + TB + y, w, h);
+}
+void gui_apka_cala(int a) { gui_apka_brudne(a, 0, 0, okna[O_APKA + a].cw, okna[O_APKA + a].ch); }
+int  gui_apka_otwarta(int a) { return okna[O_APKA + a].otwarte; }
+void gui_apka_zamknij(int a) { if (okna[O_APKA + a].otwarte) okno_zamknij(O_APKA + a); }
+u32  gui_akcent(void) { return akcent(); }
+u32  gui_kolor_lit(int k) { return kolor_lit(k); }
+void gui_muzyka_graj(int i) { muzyka_graj(i); }
+void gui_muzyka_stop(void) { if (muz_gra >= 0) muzyka_stop(); }
+void gui_komunikat(const char *s) { komunikat(s); }
+int  gui_okna_lista(int *id, int max) {
+    int n = 0;
+    for (int i = 0; i < O_N && n < max; i++) if (okna[i].otwarte && i != O_KOMUNIKAT) id[n++] = i;
+    return n;
+}
+const char *gui_okno_tytul(int id) { return id == O_WWW ? wwwg_tytul() : okna[id].tytul; }
+int  gui_okno_ikona(int id) { return okna[id].ikona; }
+int  gui_okno_stan(int id) { return okna[id].zminim ? 2 : (id == okno_aktywne() ? 0 : 1); }
+int  gui_okno_pamiec_kb(int id) { return okna[id].cw * okna[id].ch * 4 / 1024 + 24; }
+void gui_okno_przelacz(int id) { if (okna[id].otwarte) { okna[id].zminim = 0; okno_podnies(id); } }
+void gui_okno_zamknij_id(int id) { if (id >= 0 && id < O_N && okna[id].otwarte) okno_zamknij(id); }
 
 /* ====================================================================== */
 /*  Pompa zdarzeń                                                          */
@@ -1078,6 +1121,7 @@ void gui_pompuj(void) {
         }
     }
     terminal_sprawdz(t);
+    for (int a = 0; a < AP_N; a++) if (okna[O_APKA + a].otwarte) apki[a].tik(t);   /* wszystkie programy naraz */
     if (brud && t - ost_rys >= 12) { komponuj(); ost_rys = t; }
     if (okna[O_WWW].otwarte) wwwg_tik();
     w_pompie = 0;
@@ -1112,6 +1156,13 @@ void gui_init(u32 pam) {
     okna[O_KALK].cw = kalk_szer(); okna[O_KALK].ch = kalk_wys();
     okna[O_KALK].x = fb_w - ow(O_KALK) - (duzy ? 440 : 40); okna[O_KALK].y = duzy ? 80 : 10;
     kalk_init(okna[O_KALK].cw, okna[O_KALK].ch);
+    for (int a = 0; a < AP_N; a++) {
+        okno_t *o = &okna[O_APKA + a];
+        o->tytul = apki[a].tytul; o->ikona = apki[a].ikona;
+        o->cw = apki[a].cw; o->ch = apki[a].ch;
+        o->x = (fb_w - ow(O_APKA + a)) / 2 + (a - 3) * (duzy ? 70 : 24);
+        o->y = (duzy ? 40 : 4) + a * (duzy ? 26 : 10);
+    }
     for (int i = 0; i < O_N; i++) {
         if (okna[i].x < 0) okna[i].x = 0;
         if (okna[i].y + oh(i) > obszar_h) okna[i].y = obszar_h - oh(i) > 0 ? obszar_h - oh(i) : 0;

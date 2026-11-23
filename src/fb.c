@@ -339,8 +339,10 @@ void fb_kolo_aa(int cx, int cy, int r, u32 c, int alfa) {
 
 void fb_okrag_aa(int cx, int cy, int r, int grub, u32 c, int alfa) {
     int r16 = r * 16, rw = (r - grub) * 16;
-    for (int y = cy - r - 1; y <= cy + r; y++)
-        for (int x = cx - r - 1; x <= cx + r; x++) {
+    int ya = cy - r - 1 < ky0 ? ky0 : cy - r - 1, yb = cy + r >= ky1 ? ky1 - 1 : cy + r;
+    int xa = cx - r - 1 < kx0 ? kx0 : cx - r - 1, xb = cx + r >= kx1 ? kx1 - 1 : cx + r;
+    for (int y = ya; y <= yb; y++)
+        for (int x = xa; x <= xb; x++) {
             if (!w_klipie(x, y)) continue;
             int dx = x * 16 + 8 - cx * 16, dy = y * 16 + 8 - cy * 16, d2 = dx * dx + dy * dy;
             if (rw > 16 && d2 < (rw - 16) * (rw - 16)) continue;
@@ -357,6 +359,10 @@ void fb_linia_aa(int x0, int y0, int x1, int y1, int grub, u32 c) {
     int m = grub / 2 + 2;
     int xa = (x0 < x1 ? x0 : x1) - m, xb = (x0 > x1 ? x0 : x1) + m;
     int ya = (y0 < y1 ? y0 : y1) - m, yb = (y0 > y1 ? y0 : y1) + m;
+    if (xa < kx0) xa = kx0;
+    if (xb >= kx1) xb = kx1 - 1;
+    if (ya < ky0) ya = ky0;
+    if (yb >= ky1) yb = ky1 - 1;
     for (int y = ya; y <= yb; y++)
         for (int x = xa; x <= xb; x++) {
             if (!w_klipie(x, y)) continue;

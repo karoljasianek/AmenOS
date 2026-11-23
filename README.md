@@ -36,16 +36,46 @@ pośrodku, a kolor akcentu (np. dzisiejszy dzień w kalendarzu) to **kolor litur
   **Rozmnóż ×1000** (jak pięć chlebów), **Do Wielkanocy** i **Do Bożego Narodzenia** (ile dni
   zostało, liczone z zegara komputera) oraz **liczby rzymskie** (MMXXVI). Dzielenie przez zero:
   „Nieskończony jest tylko Bóg”. Działa też z klawiatury (cyfry, + - * /, Enter, Backspace, C, R),
-- **Terminal** — dotychczasowa powłoka w oknie; wszystkie programy tekstowe (przeglądarka,
-  spowiedź, Komunia, tablica pieśni, modlitwy, ogłoszenia…) działają w nim i można je uruchamiać
-  ikonami z pulpitu albo z menu Start.
+- **Terminal** — dotychczasowa powłoka w oknie (polecenia, przeglądarka tekstowa, sieć, USB).
+
+### Wiele programów naraz
+
+Każdy program parafialny ma teraz własne okno graficzne i działa niezależnie od pozostałych —
+można np. prowadzić rozmowę w spowiedzi, w tym czasie odmawiać różaniec w modlitewniku, a w tle
+słuchać Bacha. Pasek zadań pokazuje wszystkie otwarte okna, a **Menedżer zadań** listuje
+działające programy (z kolumną „Łaska” i procesem „Anioł Stróż”, którego nie da się zakończyć,
+bo jest chroniony z góry).
+
+- **Tablica pieśni** — drewniana tablica z numerami na kartach jak w kościele; kliknij rząd
+  i wpisz numer. Przycisk **„Losuj numery”**: „Duch wieje, kędy chce” — organista ma niespodziankę,
+- **Modlitewnik** — dziewięć modlitw na pergaminie i **różaniec**: tajemnice dnia (radosne,
+  światła, bolesne, chwalebne według dnia tygodnia), paciorki do klikania (albo spacja), licznik
+  dziesiątek; po pełnej części: „Babcia byłaby dumna!”. Anioł Stróż jest zawsze „online”,
+- **Spowiedź** — rozmowa jak w komunikatorze: dymki, „Spowiednik pisze…”, podpowiedzi odpowiedzi
+  do kliknięcia; kapłan dobiera naukę i pokutę do wyznanych grzechów i udziela rozgrzeszenia.
+  Na końcu rozmowa trafia do **niszczarki** (z animacją) i jest wymazywana z pamięci,
+- **Komunia święta** — złota monstrancja z promieniami i migoczącymi gwiazdkami, słowa kapłana,
+  odpowiedzi przyciskiem, dzwonki z głośnika („głośnik komputera stara się, jak może”) i
+  dziękczynienie z muzyką Bacha,
+- **Ogłoszenia parafialne** — tablica korkowa z kolorowymi karteczkami na pinezkach; nowe
+  ogłoszenie przypina się z pola na dole, × zdejmuje karteczkę,
+- **Porządek Mszy** — godziny Mszy (do edycji w oknie) i odliczanie do najbliższej Mszy
+  z komentarzem: od „Zdążysz jeszcze ugotować rosół” po „Biegiem! Ministranci już zapalają świece”,
+- **Menedżer zadań** — lista działających programów, przełączanie i kończenie zadań.
+
+Wersje tekstowe tych programów nadal działają w terminalu i w trybie tekstowym; oba tryby
+korzystają z tych samych danych (np. pieśni ustawione poleceniem `piesni` widać na tablicy).
 
 Jeśli karta graficzna nie obsługuje trybu graficznego, w menu startowym GRUB-a jest pozycja
 **„AmenOS - tryb tekstowy”**, która uruchamia system jak dawniej (80×25 znaków).
 
 | | |
 |---|---|
-| ![Przeglądarka graficzna](zrzuty/15-przegladarka-graficzna.png) | ![Kalkulator biblijny](zrzuty/16-kalkulator.png) |
+| ![Wiele programów naraz](zrzuty/17-wiele-programow.png) | ![Spowiedź jak w komunikatorze](zrzuty/18-spowiedz-czat.png) |
+| ![Tablica pieśni](zrzuty/19-tablica-piesni.png) | ![Różaniec](zrzuty/20-rozaniec.png) |
+| ![Ogłoszenia parafialne](zrzuty/21-ogloszenia.png) | ![Komunia święta](zrzuty/22-komunia.png) |
+| ![Porządek Mszy](zrzuty/23-msze.png) | ![Kalkulator biblijny](zrzuty/16-kalkulator.png) |
+| ![Przeglądarka graficzna](zrzuty/15-przegladarka-graficzna.png) | |
 | ![Menu Start](zrzuty/0b-pulpit-menu.png) | ![Przeglądarka tekstowa w oknie terminala](zrzuty/0c-pulpit-terminal.png) |
 | ![Ekran powitalny](zrzuty/1-powitanie.png) | ![Kalendarz miesiąca](zrzuty/3-miesiac.png) |
 | ![Tablica pieśni](zrzuty/4-tablica-piesni.png) | ![Komunia święta](zrzuty/10-komunia.png) |
@@ -167,6 +197,8 @@ src/znaki_dane.h    kodowania ISO-8859-2 / Windows-1250 (tools/gen_znaki.py)
 src/fb.c            grafika: bufor ramki od GRUB-a (VBE), podwójne buforowanie, rysowanie
 src/gui.c           pulpit: okna, ikony, pasek zadań, menu Start, programy graficzne
 src/kalkulator.c    kalkulator biblijny (liczby stałoprzecinkowe 64-bitowe)
+src/aplikacje.c     okna: tablica pieśni, modlitewnik z różańcem, spowiedź, Komunia, ogłoszenia,
+                    porządek Mszy, menedżer zadań (src/apki.h - wspólny interfejs z pulpitem)
 src/grafika_dane.h  czcionka 8x16, ikony i tabela sinusów (tools/gen_grafika.py)
 src/wyglad_dane.h   czcionki wygładzane, czcionka terminala, ikony, kursor, tapeta (tools/gen_wyglad.py)
 src/liturgia.c      kalendarz liturgiczny (Wielkanoc, okresy, pierwszeństwo obchodów)

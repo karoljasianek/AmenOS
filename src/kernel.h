@@ -2,7 +2,7 @@
 #ifndef AMENOS_KERNEL_H
 #define AMENOS_KERNEL_H
 
-#define AMENOS_WERSJA "1.9"
+#define AMENOS_WERSJA "2.0"
 
 typedef unsigned char  u8;
 typedef unsigned short u16;
@@ -195,6 +195,25 @@ void fb_ikona(int x, int y, const u32 *piks, int skala);
 const u32 *fb_ikona_nr(int nr);
 int  fb_sinus(int i);                   /* i = 0..59, wynik * 1000 */
 void fb_wyslij(int x, int y, int w, int h);
+
+/* ---------- dane parafii (powloka.c) - wspólne dla terminala i okien ---------- */
+extern char parafia[64];
+#define PIESNI_N 6
+extern const char *piesni_etyk[PIESNI_N];
+extern char piesni[PIESNI_N][6];
+#define MSZE_N 4
+typedef struct { char etyk[32]; char godz[64]; } msza_t;
+extern msza_t msze[MSZE_N];
+#define OGL_N 12
+extern char ogloszenia[OGL_N][128];
+extern int ogl_n;
+typedef struct { const char *tytul; const char *linie[20]; } modlitwa_t;
+extern const modlitwa_t modlitwy[];
+extern const int modlitwy_n;
+typedef struct { const char *klucze[12]; const char *nauka; const char *pokuta; } temat_t;
+extern const temat_t sp_tematy[11];
+extern const char *AKT_ZALU, *ROZGRZESZENIE;
+int zawiera(const char *h, const char *n);
 
 /* nowoczesny wygląd: czcionki wygładzane (kolejność jak w tools/gen_wyglad.py) */
 enum { F_MALY, F_TEKST, F_TEKST_B, F_WWW, F_WWW_B, F_SREDNI, F_H2, F_DUZY, F_WIELKI, F_OGROMNY, F_N };

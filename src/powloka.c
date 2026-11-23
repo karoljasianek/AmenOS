@@ -5,27 +5,28 @@
 /*  Dane parafii (w pamięci RAM - znikają po wyłączeniu komputera)         */
 /* ====================================================================== */
 
-static char parafia[64] = "Parafia Rzymskokatolicka";
+char parafia[64] = "Parafia Rzymskokatolicka";
 
-#define PIESNI_N 6
-static const char *piesni_etyk[PIESNI_N] = {
+const char *piesni_etyk[PIESNI_N] = {
     "Na wejście", "Przygotowanie darów", "Na Komunię", "Dziękczynienie", "Na zakończenie", "Dodatkowa"
 };
-static char piesni[PIESNI_N][6];
+char piesni[PIESNI_N][6];
 
-#define MSZE_N 4
-static struct { char etyk[32]; char godz[64]; } msze[MSZE_N] = {
+msza_t msze[MSZE_N] = {
     { "Niedziele i święta", "7:00, 9:00, 10:30 (suma), 12:00, 18:00" },
     { "Dni powszednie",     "7:00, 18:00" },
     { "Sobota",             "7:00, 18:00 (z liturgii niedzielnej)" },
     { "Spowiedź",           "pół godziny przed każdą Mszą" },
 };
 
-#define OGL_N 12
-static char ogloszenia[OGL_N][128] = {
-    "Witamy w systemie AmenOS! Ogłoszenia dodasz poleceniem: ogloszenia dodaj <treść>",
+char ogloszenia[OGL_N][128] = {
+    "Witamy w AmenOS! Nowe ogłoszenie przypniesz na dole tablicy (albo poleceniem: ogloszenia dodaj).",
+    "Zgubiono różaniec. Znalazcę prosimy o odmówienie jednej dziesiątki i zwrot do zakrystii.",
+    "Próba chóru w czwartek o 19:00. Fałszujący mile widziani - Pan Bóg patrzy na serce, nie na słuch.",
+    "Prosimy wyciszać telefony w kościele. Do Pana Boga można się dodzwonić bez zasięgu.",
+    "W sobotę sprzątanie kościoła. Kto przyjdzie z odkurzaczem, ten ma u kościelnego dozgonną wdzięczność.",
 };
-static int ogl_n = 1;
+int ogl_n = 5;
 
 static u32 pamiec_kb;
 
@@ -329,9 +330,7 @@ static void cmd_kalendarz(char *arg) {
 /*  Modlitwy                                                               */
 /* ====================================================================== */
 
-typedef struct { const char *tytul; const char *linie[20]; } modlitwa_t;
-
-static const modlitwa_t modlitwy[] = {
+const modlitwa_t modlitwy[] = {
     { "Ojcze nasz", {
         "Ojcze nasz, któryś jest w niebie,", "święć się imię Twoje,", "przyjdź królestwo Twoje,",
         "bądź wola Twoja jako w niebie, tak i na ziemi.", "Chleba naszego powszedniego daj nam dzisiaj",
@@ -376,6 +375,7 @@ static const modlitwa_t modlitwy[] = {
         "Niech odpoczywają w pokoju wiecznym.", "Amen.", 0 } },
 };
 #define MODLITWY_N ((int)(sizeof modlitwy / sizeof modlitwy[0]))
+const int modlitwy_n = MODLITWY_N;
 
 static void cmd_modlitwa(char *arg) {
     int ok = 0, n = arg ? k_atoi(arg, &ok) : 0;
@@ -855,17 +855,17 @@ static const u8 SP_KAPLAN = ATTR(ZOLTY, NIEBIESKI);
 static const u8 SP_TY = ATTR(BIALY, NIEBIESKI);
 static const u8 SP_FORMULA = ATTR(JASNOTURKUSOWY, NIEBIESKI);
 
-static const char *AKT_ZALU =
+const char *AKT_ZALU =
     "Ach, żałuję za me złości jedynie dla Ciebie, Boże, bom obraził Twą dobroć niezmierzoną. "
     "Ach, żałuję i poprawę obiecuję, dopomóż mi, Panie Boże. Amen.";
-static const char *ROZGRZESZENIE =
+const char *ROZGRZESZENIE =
     "Bóg, Ojciec miłosierdzia, który pojednał świat ze sobą przez śmierć i zmartwychwstanie "
     "swojego Syna i zesłał Ducha Świętego na odpuszczenie grzechów, niech ci udzieli przebaczenia "
     "i pokoju przez posługę Kościoła. I ja odpuszczam tobie grzechy w imię Ojca i Syna, "
     "i Ducha Świętego. ┼";
 
 /* tematy rachunku sumienia: słowa-klucze (bez ogonków), nauka, praktyczna pokuta */
-static const struct { const char *klucze[12]; const char *nauka; const char *pokuta; } tematy[11] = {
+const temat_t sp_tematy[11] = {
     { { "modli", "pacierz", "wrozb", "horoskop", "zabobon", "wiar", 0 },
       "Pamiętaj o codziennej modlitwie - to rozmowa z Bogiem, który zawsze na ciebie czeka.",
       "Każdego dnia przez najbliższy tydzień znajdź chwilę na osobistą modlitwę." },
@@ -901,7 +901,7 @@ static const struct { const char *klucze[12]; const char *nauka; const char *pok
       "Przez tydzień zrezygnuj z czegoś, co ci szkodzi, i ofiaruj to Bogu." },
 };
 
-static int zawiera(const char *h, const char *n) {
+int zawiera(const char *h, const char *n) {
     for (; *h; h++) {
         const char *a = h, *b = n;
         while (*a && *b && *a == *b) { a++; b++; }
@@ -981,8 +981,8 @@ static int sp_pytaj(const char *podpowiedz, const char *domyslna) {
 
 static void sp_rozpoznaj(const char *male) {
     for (int t = 0; t < 11; t++)
-        for (int k = 0; k < 12 && tematy[t].klucze[k]; k++)
-            if (zawiera(male, tematy[t].klucze[k])) {
+        for (int k = 0; k < 12 && sp_tematy[t].klucze[k]; k++)
+            if (zawiera(male, sp_tematy[t].klucze[k])) {
                 if (!sp.tematy[t]) { sp.tematy[t] = 1; sp.kolejnosc[sp.ile_tematow++] = t; }
                 break;
             }
@@ -1049,7 +1049,7 @@ static void cmd_spowiedz(void) {
     ksprintf(nauka, sizeof nauka, "Dziękuję za szczere wyznanie. Bóg cieszy się z każdego, kto do Niego wraca. ");
     poz = (int)k_strlen(nauka);
     for (int i = 0; i < sp.ile_tematow && i < 2; i++) {
-        ksprintf(nauka + poz, sizeof nauka - (u32)poz, "%s ", tematy[sp.kolejnosc[i]].nauka);
+        ksprintf(nauka + poz, sizeof nauka - (u32)poz, "%s ", sp_tematy[sp.kolejnosc[i]].nauka);
         poz = (int)k_strlen(nauka);
     }
     ksprintf(nauka + poz, sizeof nauka - (u32)poz,
@@ -1060,7 +1060,7 @@ static void cmd_spowiedz(void) {
                          : sp.grzechow <= 7 ? "Koronkę do Miłosierdzia Bożego"
                          : "jedną część różańca";
     if (sp.ile_tematow)
-        ksprintf(pokuta, sizeof pokuta, "Za pokutę odmów %s. %s", modlitwa, tematy[sp.kolejnosc[0]].pokuta);
+        ksprintf(pokuta, sizeof pokuta, "Za pokutę odmów %s. %s", modlitwa, sp_tematy[sp.kolejnosc[0]].pokuta);
     else
         ksprintf(pokuta, sizeof pokuta, "Za pokutę odmów %s.", modlitwa);
     sp_kaplan(pokuta, SP_KAPLAN);
