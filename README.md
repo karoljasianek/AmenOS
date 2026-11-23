@@ -8,11 +8,22 @@ Przeznaczony na komputer w zakrystii, kancelarii albo do rzutnika/telewizora w k
 
 ## Pulpit graficzny
 
-System startuje w trybie graficznym (1024×768 lub 800×600) z pulpitem obsługiwanym myszą:
+System startuje w trybie graficznym **1920×1080** (Full HD). Jeśli karta graficzna lub monitor
+nie obsługuje tej rozdzielczości, GRUB sam wybiera najlepszą dostępną (np. 1366×768, 1024×768),
+a pulpit dopasowuje się do niej.
+
+Wygląd jest nowoczesny: wygładzone czcionki (Inter), duże kolorowe ikony, okna z zaokrąglonymi
+rogami i miękkim cieniem, tapeta ze świetlistym krzyżem, półprzezroczysty pasek zadań z ikonami
+pośrodku, a kolor akcentu (np. dzisiejszy dzień w kalendarzu) to **kolor liturgiczny dnia**.
+
+- **pasek zadań** — z lewej obchód dnia (kliknięcie otwiera kalendarz), pośrodku przycisk Start
+  i przypięte programy (kropka pod ikoną = program otwarty), z prawej godzina i data,
+- **menu Start** — siatka wszystkich programów, karta „Dziś w liturgii”, ponowne uruchomienie
+  i wyłączenie komputera,
+- **widżet na pulpicie** — duży zegar, data i obchód liturgiczny dnia,
 
 - **ikony** — podwójne kliknięcie uruchamia program,
 - **okna** — przeciąganie za belkę, minimalizowanie, zamykanie (także klawiszem Esc),
-- **pasek zadań** — menu Start, przyciski otwartych okien, zegar, data i kolor liturgiczny dnia,
 - **programy graficzne** — kalendarz liturgiczny (klikalny, z kolorami), zegar ze wskazówkami,
   odtwarzacz muzyki mszalnej grający w tle, okno „O systemie”,
 - **przeglądarka graficzna** — strony z nagłówkami, linkami do klikania, listami, tabelami
@@ -34,13 +45,13 @@ Jeśli karta graficzna nie obsługuje trybu graficznego, w menu startowym GRUB-a
 
 | | |
 |---|---|
-| ![Przeglądarka graficzna](zrzuty/15-przegladarka-graficzna.png) | ![Przeglądarka graficzna - dalsza część strony](zrzuty/15b-przegladarka-graficzna.png) |
+| ![Przeglądarka graficzna](zrzuty/15-przegladarka-graficzna.png) | ![Kalkulator biblijny](zrzuty/16-kalkulator.png) |
 | ![Menu Start](zrzuty/0b-pulpit-menu.png) | ![Przeglądarka tekstowa w oknie terminala](zrzuty/0c-pulpit-terminal.png) |
 | ![Ekran powitalny](zrzuty/1-powitanie.png) | ![Kalendarz miesiąca](zrzuty/3-miesiac.png) |
 | ![Tablica pieśni](zrzuty/4-tablica-piesni.png) | ![Komunia święta](zrzuty/10-komunia.png) |
 | ![Spowiedź](zrzuty/9-spowiedz-nauka.png) | ![Muzyka mszalna](zrzuty/11-muzyka.png) |
 | ![Przeglądarka](zrzuty/12-przegladarka.png) | ![Strona startowa przeglądarki](zrzuty/13-przegladarka-start.png) |
-| ![Urządzenia USB](zrzuty/14-usb.png) | ![Kalkulator biblijny](zrzuty/16-kalkulator.png) |
+| ![Urządzenia USB](zrzuty/14-usb.png) | |
 
 ## Co potrafi
 
@@ -110,6 +121,8 @@ w niedzielę) i przenoszenie uroczystości (np. Zwiastowanie po oktawie Wielkano
   klatka) i BMP; jedna czcionka 8×16 (nagłówek 1. stopnia powiększony), bez CSS i kółka myszy.
   Potrzebuje ok. 48 MB pamięci RAM — przy mniejszej pokazuje komunikat.
 - Pulpit wymaga karty graficznej z VBE (praktycznie każda karta od ok. 2000 r., QEMU, VirtualBox).
+- Pulpit w 1920×1080 zajmuje ok. 17 MB RAM na obraz ekranu i tapetę; razem z przeglądarką
+  graficzną zalecane jest co najmniej 128 MB pamięci.
 - **Klawiatury i myszy USB** obsługiwane są bezpośrednio przez kontrolery **xHCI** (USB 3, komputery
   od ok. 2012 r.) i **UHCI** (starsze komputery z chipsetami Intel/VIA), także przez **koncentratory**
   (hub w monitorze, KVM, listwa USB) i z podłączaniem w trakcie pracy. Urządzenia działają w trybie
@@ -155,11 +168,16 @@ src/fb.c            grafika: bufor ramki od GRUB-a (VBE), podwójne buforowanie,
 src/gui.c           pulpit: okna, ikony, pasek zadań, menu Start, programy graficzne
 src/kalkulator.c    kalkulator biblijny (liczby stałoprzecinkowe 64-bitowe)
 src/grafika_dane.h  czcionka 8x16, ikony i tabela sinusów (tools/gen_grafika.py)
+src/wyglad_dane.h   czcionki wygładzane, czcionka terminala, ikony, kursor, tapeta (tools/gen_wyglad.py)
 src/liturgia.c      kalendarz liturgiczny (Wielkanoc, okresy, pierwszeństwo obchodów)
 src/powloka.c       wiersz poleceń i plansze (pieśni, zegar, modlitwy, ogłoszenia, msze)
 src/lib.c           funkcje napisów i UTF-8 (system nie używa żadnej biblioteki C)
 src/font_pl.h       kształty polskich liter (wygenerowane przez tools/gen_font.py)
 linker.ld, Makefile, iso/boot/grub/grub.cfg
 ```
+
+Czcionki pulpitu: [Inter](https://rsms.me/inter/) (SIL Open Font License) i DejaVu Sans Mono
+(licencja Bitstream Vera) — w systemie są zapisane jako gotowe bitmapy wygenerowane przez
+`tools/gen_wyglad.py`.
 
 Szczęść Boże!

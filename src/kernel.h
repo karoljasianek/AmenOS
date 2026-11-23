@@ -2,11 +2,12 @@
 #ifndef AMENOS_KERNEL_H
 #define AMENOS_KERNEL_H
 
-#define AMENOS_WERSJA "1.8"
+#define AMENOS_WERSJA "1.9"
 
 typedef unsigned char  u8;
 typedef unsigned short u16;
 typedef unsigned int   u32;
+typedef signed char    s8;
 
 /* ---------- porty we/wy ---------- */
 static inline void outb(u16 port, u8 val) { __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port)); }
@@ -194,6 +195,38 @@ void fb_ikona(int x, int y, const u32 *piks, int skala);
 const u32 *fb_ikona_nr(int nr);
 int  fb_sinus(int i);                   /* i = 0..59, wynik * 1000 */
 void fb_wyslij(int x, int y, int w, int h);
+
+/* nowoczesny wygląd: czcionki wygładzane (kolejność jak w tools/gen_wyglad.py) */
+enum { F_MALY, F_TEKST, F_TEKST_B, F_WWW, F_WWW_B, F_SREDNI, F_H2, F_DUZY, F_WIELKI, F_OGROMNY, F_N };
+int  fb_napis(int x, int y, const char *s, u32 kolor, int f);        /* y = górna krawędź wiersza */
+int  fb_napis_n(int x, int y, const char *s, int bajty, u32 kolor, int f);
+int  fb_napis_szer(const char *s, int f);
+int  fb_napis_szer_n(const char *s, int bajty, int f);
+int  fb_znak_szer(u32 cp, int f);
+int  fb_napis_wys(int f);
+int  fb_napis_asc(int f);
+void fb_napis_srodek(int x, int w, int y, const char *s, u32 kolor, int f);
+int  fb_napis_zawin(int x, int y, int w, const char *s, u32 kolor, int f, int odstep);  /* kolor FB_PRZEZR = tylko policz */
+void fb_napis_przytnij(char *o, u32 rozm, const char *s, int maxw, int f);
+void fb_term_znak(int x, int y, u8 g, u32 kolor, u32 tlo);
+#define TERM_W 10
+#define TERM_H 20
+void fb_obraz_alfa(int x, int y, int w, int h, const u32 *argb, int alfa);
+void fb_ikona_rys(int x, int y, int nr, int rozm);                  /* rozm 48, 32 albo 24 */
+void fb_zaokr(int x, int y, int w, int h, int r, u32 c, int alfa);  /* alfa 0..256 */
+void fb_zaokr_ramka(int x, int y, int w, int h, int r, u32 c, int alfa);
+void fb_zaokr_gradient(int x, int y, int w, int h, int r, u32 c1, u32 c2);
+void fb_cien(int x, int y, int w, int h, int r, int rozmiar, int sila, int przesun);
+void fb_kolo_aa(int cx, int cy, int r, u32 c, int alfa);
+void fb_okrag_aa(int cx, int cy, int r, int grub, u32 c, int alfa);
+void fb_linia_aa(int x0, int y0, int x1, int y1, int grub, u32 c);
+void fb_tapeta_init(void);
+void fb_tapeta(int x, int y, int w, int h);
+void fb_kursor(int x, int y);
+#define KURSOR_SZ 24
+#define KURSOR_WYS 32
+void fb_rogi_zapisz(int x, int y, int w, int h, int r);
+void fb_rogi_przywroc(int x, int y, int w, int h, int r, u32 ramka);
 
 /* ---------- pulpit (gui.c) ---------- */
 extern int gui_aktywne;

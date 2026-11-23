@@ -17,7 +17,7 @@ align 4
     dd CHECKSUM
     dd 0, 0, 0, 0, 0    ; adresy (nieużywane - jądro w formacie ELF)
     dd 0                ; tryb liniowy (grafika)
-    dd 1024, 768, 32    ; preferowana rozdzielczość i głębia kolorów
+    dd 1920, 1080, 32   ; preferowana rozdzielczość i głębia kolorów
 
 section .bss
 align 16

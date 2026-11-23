@@ -8,10 +8,10 @@
 #include "www.h"
 #include "obrazy.h"
 
-#define NARZ    36                     /* pasek narzędzi */
-#define STAT    22                     /* pasek stanu */
+#define NARZ    52                     /* pasek narzędzi */
+#define STAT    26                     /* pasek stanu */
 #define SUWAK   14                     /* pasek przewijania */
-#define MARG    18                     /* margines strony */
+#define MARG    marg_l()               /* margines strony */
 #define MAX_EL  40000
 #define MAX_BOX 40000
 #define MAX_LINK 2000
@@ -51,6 +51,7 @@ void gui_rysuj_teraz(void);
 int  gui_www_aktywne(void);
 
 static int widok_h(void) { return CH - NARZ - STAT; }
+static int marg_l(void);
 static int tresc_w(void) { return CW - SUWAK - 2 * MARG; }
 static void brudne_widok(void) { gui_www_brudne(0, NARZ, CW, widok_h()); }
 static void brudne_status(void) { gui_www_brudne(0, CH - STAT, CW, STAT); }
@@ -231,7 +232,25 @@ static void parsuj_html(const u8 *p, const u8 *k) {
 /*  Układ strony                                                           */
 /* ====================================================================== */
 
-static int skala_st(int s) { return (s & S_H1) ? 2 : 1; }
+static int marg_l(void) { int m = (CW - SUWAK - 980) / 2; return m > 32 ? m : 32; }
+
+/* czcionka dla stylu; -1 = czcionka o stałej szerokości (terminalowa 10x20) */
+static int font_st(int s) {
+    if (s & S_PRE) return -1;
+    if (s & S_H1) return F_DUZY;
+    if (s & S_H2) return F_H2;
+    if (s & S_H3) return F_SREDNI;
+    if (s & S_B) return F_WWW_B;
+    return F_WWW;
+}
+static int wys_st(int f) { return f < 0 ? TERM_H : fb_napis_wys(f); }
+static int znak_szer_st(u32 cp, int f) { return f < 0 ? TERM_W : fb_znak_szer(cp, f); }
+static int szer_st(const char *t, int bajty, int f) {
+    if (f >= 0) return fb_napis_szer_n(t, bajty, f);
+    int n = 0; const char *k = t + bajty;
+    while (t < k) { k_utf8_next(&t); n++; }
+    return n * TERM_W;
+}
 
 static int lx0, lx, ly, lwys, lpocz, lprzerwa;
 
@@ -265,29 +284,34 @@ static void uklad(void) {
         switch (e->typ) {
         case E_SLOWO: {
             if (!e->n) break;
-            int sk = skala_st(e->styl), zw = 8 * sk, w = e->n * zw, h = 16 * sk;
+            int f = font_st(e->styl), h = wys_st(f);
+            const char *t = txt + e->tekst, *k = t;
+            for (int c = 0; c < e->n; c++) k_utf8_next(&k);
+            int bajty = (int)(k - t), w = szer_st(t, bajty, f), sp = znak_szer_st(' ', f);
             if (e->arg && lx > lx0) {
-                if (lx + zw + w > maks) l_wiersz();
+                if (lx + sp + w > maks) l_wiersz();
                 else {
                     int prev_link = nbx > lpocz ? bx[nbx - 1].link : -1;
-                    if (prev_link >= 0 && prev_link == e->link && bx[nbx - 1].typ == B_TEKST) bx[nbx - 1].w = (short)(bx[nbx - 1].w + zw);
-                    lx += zw;
+                    if (prev_link >= 0 && prev_link == e->link && bx[nbx - 1].typ == B_TEKST) bx[nbx - 1].w = (short)(bx[nbx - 1].w + sp);
+                    lx += sp;
                 }
             }
-            const char *t = txt + e->tekst;
-            int zostalo = e->n;
             u32 off = e->tekst;
-            while (zostalo > 0) {                       /* bardzo długie słowa dzielimy */
-                int miesci = (maks - lx) / zw;
-                if (miesci < zostalo && lx > lx0 && w <= maks - lx0) { l_wiersz(); miesci = (maks - lx) / zw; }
-                int ile = zostalo < miesci ? zostalo : (miesci > 0 ? miesci : 1);
+            while (bajty > 0) {                         /* bardzo długie słowa dzielimy */
+                if (lx > lx0 && lx + w > maks && (w <= maks - lx0 || maks - lx < 60)) l_wiersz();
+                int miejsce = maks - lx, sz = 0;
                 const char *q = t;
-                for (int c = 0; c < ile; c++) k_utf8_next(&q);
-                box_t *b = l_box(B_TEKST, ile * zw, h, e->styl, e->link);
+                while (q < t + bajty) {
+                    const char *q2 = q;
+                    int zw = znak_szer_st(k_utf8_next(&q2), f);
+                    if (sz + zw > miejsce && q > t) break;
+                    sz += zw; q = q2;
+                }
+                box_t *b = l_box(B_TEKST, sz, h, e->styl, e->link);
                 if (!b) break;
                 b->tekst = off; b->dl = (u16)(q - t);
-                off += (u32)(q - t); t = q; zostalo -= ile;
-                if (zostalo > 0) l_wiersz();
+                off += (u32)(q - t); bajty -= (int)(q - t); w -= sz; t = q;
+                if (bajty > 0) l_wiersz();
             }
             break;
         }
@@ -325,7 +349,9 @@ static void uklad(void) {
                 const char *alt = txt + im->alt;
                 int n = (int)k_utf8_len(alt);
                 if (n > 40) n = 40;
-                box_t *b = l_box(B_ALT, (n ? n * 8 : 0) + 26, 20, 0, e->link);
+                const char *qq = alt;
+                for (int c = 0; c < n; c++) k_utf8_next(&qq);
+                box_t *b = l_box(B_ALT, (n ? fb_napis_szer_n(alt, (int)(qq - alt), F_MALY) + 8 : 0) + 32, 28, 0, e->link);
                 if (b) {
                     const char *q = alt;
                     for (int c = 0; c < n; c++) k_utf8_next(&q);
@@ -335,8 +361,8 @@ static void uklad(void) {
             if (lx < maks) lx += 4;
             break;
         }
-        case E_POLE: l_box(B_POLE, e->arg * 8 + 10, 20, 0, -1); lx += 6; break;
-        case E_PRZYCISK: { box_t *b = l_box(B_PRZYCISK, e->n * 8 + 20, 22, 0, -1); if (b) { b->tekst = e->tekst; b->dl = (u16)k_strlen(txt + e->tekst); } lx += 6; break; }
+        case E_POLE: l_box(B_POLE, e->arg * 8 + 16, 28, 0, -1); lx += 6; break;
+        case E_PRZYCISK: { box_t *b = l_box(B_PRZYCISK, fb_napis_szer(txt + e->tekst, F_TEKST_B) + 28, 30, 0, -1); if (b) { b->tekst = e->tekst; b->dl = (u16)k_strlen(txt + e->tekst); } lx += 6; break; }
         }
     }
     l_wiersz();
@@ -498,27 +524,58 @@ static void laduj(const char *url_we, int z_historii) {
 /* ====================================================================== */
 
 static u32 kolor_st(int s) {
-    if (s & S_LINK) return 0x1A4FC4;
-    if (s & (S_H1 | S_H2 | S_H3)) return 0x1C3A70;
-    if (s & S_SZARY) return 0x777777;
-    return 0x202020;
+    if (s & S_LINK) return 0x1F5BD6;
+    if (s & (S_H1 | S_H2 | S_H3)) return 0x141A2E;
+    if (s & S_SZARY) return 0x6B7280;
+    return 0x23262F;
 }
 
-static void tekst_utf8(int x, int y, const char *t, int dl, u32 c, int sk, int gruby) {
+#define TLO_PRE 0xF2F3F6
+
+static void tekst_utf8(int x, int y, const char *t, int dl, u32 c, int f) {
+    if (f >= 0) { fb_napis_n(x, y, t, dl, c, f); return; }
     const char *k = t + dl;
-    while (t < k) {
-        u8 g = vga_map(k_utf8_next(&t));
-        fb_znak(x, y, g, c, FB_PRZEZR, sk);
-        if (gruby) fb_znak(x + 1, y, g, c, FB_PRZEZR, sk);
-        x += 8 * sk;
-    }
+    while (t < k) { fb_term_znak(x, y, vga_map(k_utf8_next(&t)), c, TLO_PRE); x += TERM_W; }
 }
 
 static void przycisk_narz(int x, int y, int w, const char *t, int aktywny) {
-    fb_prost_zaokr(x, y, w, 24, 4, 0xB8BEC9);
-    fb_prost_zaokr(x + 1, y + 1, w - 2, 22, 3, aktywny ? 0xF4F6FA : 0xE2E5EA);
-    fb_tekst(x + (w - fb_tekst_szer(t, 1)) / 2, y + 4, t, aktywny ? 0x1C3A70 : 0xA0A4AC, FB_PRZEZR, 1);
+    fb_zaokr(x, y, w, 30, 8, aktywny ? 0xFFFFFF : 0xF0F1F4, 256);
+    fb_zaokr_ramka(x, y, w, 30, 8, 0x000000, 40);
+    fb_napis(x + (w - fb_napis_szer(t, F_TEKST_B)) / 2, y + 6, t, aktywny ? 0x1B1F2A : 0xA0A4AC, F_TEKST_B);
 }
+
+/* okrągły przycisk paska narzędzi; rodzaj: 0 wstecz, 1 dalej, 2 odśwież, 3 zatrzymaj, 4 strona startowa */
+static void przycisk_okr(int cx, int cy, int rodzaj, int aktywny, int najechany) {
+    if (najechany && aktywny) fb_kolo_aa(cx, cy, 17, 0xE2E5EB, 256);
+    u32 c = aktywny ? 0x2B3040 : 0xB4B8C2;
+    switch (rodzaj) {
+    case 0: case 1: {
+        int k = rodzaj ? -1 : 1;
+        fb_linia_aa(cx - 7 * k, cy, cx + 7 * k, cy, 2, c);
+        fb_linia_aa(cx - 7 * k, cy, cx - 1 * k, cy - 6, 2, c);
+        fb_linia_aa(cx - 7 * k, cy, cx - 1 * k, cy + 6, 2, c);
+        break;
+    }
+    case 2:
+        fb_okrag_aa(cx, cy, 8, 2, c, 256);
+        fb_prost(cx + 1, cy - 9, 9, 7, najechany ? 0xE2E5EB : 0xF3F4F7);
+        fb_linia_aa(cx + 1, cy - 8, cx + 7, cy - 8, 2, c);
+        fb_linia_aa(cx + 7, cy - 8, cx + 7, cy - 2, 2, c);
+        break;
+    case 3:
+        fb_linia_aa(cx - 6, cy - 6, cx + 6, cy + 6, 2, c);
+        fb_linia_aa(cx + 6, cy - 6, cx - 6, cy + 6, 2, c);
+        break;
+    case 4:
+        fb_linia_aa(cx - 8, cy - 1, cx, cy - 8, 2, c);
+        fb_linia_aa(cx, cy - 8, cx + 8, cy - 1, 2, c);
+        fb_linia_aa(cx - 6, cy - 2, cx - 6, cy + 8, 2, c);
+        fb_linia_aa(cx + 6, cy - 2, cx + 6, cy + 8, 2, c);
+        fb_linia_aa(cx - 6, cy + 8, cx + 6, cy + 8, 2, c);
+        break;
+    }
+}
+static int narz_najechany = -1;
 
 static void rysuj_widok(int x0, int y0) {
     int vh = widok_h(), szer = CW - SUWAK;
@@ -527,7 +584,7 @@ static void rysuj_widok(int x0, int y0) {
     fb_klip_zawez(x0, y0, szer, vh);
     fb_prost(x0, y0, szer, vh, 0xFFFFFF);
     if (!pamiec_ok) {
-        fb_tekst(x0 + 20, y0 + 20, "Za mało pamięci na przeglądarkę graficzną (potrzeba ok. 48 MB RAM).", 0xC62828, FB_PRZEZR, 1);
+        fb_napis(x0 + 24, y0 + 24, "Za mało pamięci na przeglądarkę graficzną (potrzeba ok. 48 MB RAM).", 0xC62828, F_TEKST_B);
         fb_klip(kx, ky, kw, kh);
         return;
     }
@@ -541,13 +598,16 @@ static void rysuj_widok(int x0, int y0) {
         int zazn = b->link >= 0 && b->link == akt;
         switch (b->typ) {
         case B_TEKST:
-            if (b->styl & S_PRE) fb_prost(x, y - 1, b->w, b->h + 2, 0xF0F0F2);
-            if (zazn) fb_prost(x - 1, y - 1, b->w + 2, b->h + 2, 0xC8DAF5);
-            tekst_utf8(x, y, txt + b->tekst, b->dl, kolor_st(b->styl), skala_st(b->styl), (b->styl & (S_B | S_H1 | S_H2 | S_H3)) != 0);
-            if (b->link >= 0) fb_prost(x, y + b->h * 15 / 16, b->w, 1, (b->link == pod_mysza || zazn) ? 0xC62828 : 0x1A4FC4);
+            if (b->styl & S_PRE) fb_prost(x, y - 1, b->w, b->h + 2, TLO_PRE);
+            if (zazn) fb_zaokr(x - 2, y - 1, b->w + 4, b->h + 2, 4, 0xD6E4FB, 256);
+            {
+                int f = font_st(b->styl);
+                tekst_utf8(x, y, txt + b->tekst, b->dl, (b->link >= 0 && b->link == pod_mysza) ? 0x0B3FA8 : kolor_st(b->styl), f);
+                if (b->link >= 0) fb_prost(x, y + (f < 0 ? 17 : fb_napis_asc(f) + 2), b->w, 1, (b->link == pod_mysza || zazn) ? 0x0B3FA8 : 0x9CB6EA);
+            }
             break;
-        case B_HR: fb_prost(x, y, b->w, 1, 0xC8C8CC); fb_prost(x, y + 1, b->w, 1, 0xF0F0F0); break;
-        case B_PUNKT: fb_kolo(x + 4, y + 9, 3, 0x1C3A70); break;
+        case B_HR: fb_prost(x, y, b->w, 1, 0xDCDFE5); break;
+        case B_PUNKT: fb_kolo_aa(x + 4, y + 6, 3, 0x3A4256, 256); break;
         case B_OBRAZ: {
             img_t *im = &img[b->obraz];
             fb_obraz(x, y, im->w, im->h, im->piks);
@@ -555,11 +615,12 @@ static void rysuj_widok(int x0, int y0) {
             break;
         }
         case B_ALT:
-            fb_ramka(x, y, b->w, b->h, 0xC0C4CC);
-            fb_ikona(x + 3, y + 2, fb_ikona_nr(5), 1);
-            tekst_utf8(x + 22, y + 2, txt + b->tekst, b->dl, b->link >= 0 ? 0x1A4FC4 : 0x808080, 1, 0);
+            fb_zaokr(x, y, b->w, b->h, 6, 0xF3F4F7, 256);
+            fb_zaokr_ramka(x, y, b->w, b->h, 6, 0x000000, 34);
+            fb_ikona_rys(x + 3, y + 2, 5, 24);
+            fb_napis_n(x + 32, y + 6, txt + b->tekst, b->dl, b->link >= 0 ? 0x1F5BD6 : 0x6B7280, F_MALY);
             break;
-        case B_POLE: fb_prost(x, y, b->w, b->h, 0xFFFFFF); fb_ramka(x, y, b->w, b->h, 0xA0A4AC); break;
+        case B_POLE: fb_zaokr(x, y, b->w, b->h, 6, 0xFFFFFF, 256); fb_zaokr_ramka(x, y, b->w, b->h, 6, 0x000000, 60); break;
         case B_PRZYCISK: przycisk_narz(x, y, b->w, txt + b->tekst, 1); break;
         }
     }
@@ -568,48 +629,42 @@ static void rysuj_widok(int x0, int y0) {
 
 void wwwg_rysuj(int x, int y) {
     /* pasek narzędzi */
-    fb_gradient(x, y, CW, NARZ, 0xF2F3F6, 0xDDE0E6);
-    fb_prost(x, y + NARZ - 1, CW, 1, 0xB8BEC9);
-    przycisk_narz(x + 6, y + 6, 28, "◄", phist > 0);
-    przycisk_narz(x + 38, y + 6, 28, "►", phist >= 0 && phist < nhist - 1);
-    przycisk_narz(x + 70, y + 6, 28, laduje ? "X" : "", 1);
-    if (!laduje) {                                           /* strzałka w kółku */
-        int cx = x + 84, cy = y + 18;
-        fb_okrag(cx, cy, 7, 0x1C3A70, 2);
-        fb_prost(cx + 1, cy - 8, 7, 6, 0xF4F6FA);
-        fb_prost(cx + 1, cy - 9, 2, 5, 0x1C3A70);
-        fb_prost(cx + 1, cy - 9, 5, 2, 0x1C3A70);
-    }
-    przycisk_narz(x + 102, y + 6, 28, "⌂", 1);
-    int ax = x + 138, aw = CW - 146;
-    fb_prost(ax, y + 6, aw, 24, edytuj ? 0xFFFFFF : 0xFAFAFC);
-    fb_ramka(ax, y + 6, aw, 24, edytuj ? 0x3A6EC0 : 0xA8AEB8);
+    fb_prost(x, y, CW, NARZ, 0xF3F4F7);
+    fb_prost(x, y + NARZ - 1, CW, 1, 0xE0E3E9);
+    przycisk_okr(x + 26, y + 26, 0, phist > 0, narz_najechany == 0);
+    przycisk_okr(x + 64, y + 26, 1, phist >= 0 && phist < nhist - 1, narz_najechany == 1);
+    przycisk_okr(x + 102, y + 26, laduje ? 3 : 2, 1, narz_najechany == 2);
+    przycisk_okr(x + 140, y + 26, 4, 1, narz_najechany == 3);
+    int ax = x + 168, aw = CW - 184;
+    fb_zaokr(ax, y + 9, aw, 34, 17, 0xFFFFFF, 256);
+    if (edytuj) { fb_zaokr_ramka(ax, y + 9, aw, 34, 17, 0x2F62D9, 256); fb_zaokr_ramka(ax + 1, y + 10, aw - 2, 32, 16, 0x2F62D9, 256); }
+    else fb_zaokr_ramka(ax, y + 9, aw, 34, 17, 0x000000, 34);
     const char *a = edytuj ? edycja : adres;
-    int miesci = (aw - 16) / 8, n = (int)k_utf8_len(a);
-    if (edytuj && n > miesci) { for (int i = 0; i < n - miesci; i++) k_utf8_next(&a); n = miesci; }
+    int miesci = aw - 40;
+    if (edytuj) while (*a && fb_napis_szer(a, F_TEKST) > miesci) k_utf8_next(&a);
     int kx, ky, kw, kh;
     fb_klip_pobierz(&kx, &ky, &kw, &kh);
-    fb_klip_zawez(ax + 2, y + 6, aw - 4, 24);
-    if (edytuj && zastap && n) fb_prost(ax + 7, y + 9, (n < miesci ? n : miesci) * 8 + 2, 18, 0xC8DAF5);
-    fb_tekst(ax + 8, y + 10, a, 0x202020, FB_PRZEZR, 1);
-    if (edytuj) fb_prost(ax + 8 + (n < miesci ? n : miesci) * 8, y + 10, 2, 16, 0x202020);
+    fb_klip_zawez(ax + 4, y + 9, aw - 8, 34);
+    int tw = fb_napis_szer(a, F_TEKST);
+    if (edytuj && zastap && *a) fb_zaokr(ax + 15, y + 15, tw + 4, 22, 4, 0xC9DAFA, 256);
+    fb_napis(ax + 17, y + 17, a, 0x1B1F2A, F_TEKST);
+    if (edytuj) fb_prost(ax + 17 + tw, y + 16, 2, 20, 0x2F62D9);
     fb_klip(kx, ky, kw, kh);
 
     rysuj_widok(x, y + NARZ);
 
     /* pasek przewijania */
     int vh = widok_h(), sx = x + CW - SUWAK, sy = y + NARZ;
-    fb_prost(sx, sy, SUWAK, vh, 0xECEDF0);
-    fb_prost(sx, sy, 1, vh, 0xD0D3D8);
+    fb_prost(sx, sy, SUWAK, vh, 0xFFFFFF);
     if (dok_h > vh) {
         int th = vh * vh / dok_h; if (th < 24) th = 24;
         int ty = sy + (vh - th) * przewin / (dok_h - vh);
-        fb_prost_zaokr(sx + 2, ty + 1, SUWAK - 4, th - 2, 4, ciag_suwak >= 0 ? 0x7A808C : 0xA8AEB8);
+        fb_zaokr(sx + 3, ty + 2, SUWAK - 6, th - 4, (SUWAK - 6) / 2, ciag_suwak >= 0 ? 0x8A909C : 0xC3C8D1, 256);
     }
     /* pasek stanu */
     int st = y + CH - STAT;
-    fb_prost(x, st, CW, STAT, 0xEEF0F3);
-    fb_prost(x, st, CW, 1, 0xC8CCD4);
+    fb_prost(x, st, CW, STAT, 0xF3F4F7);
+    fb_prost(x, st, CW, 1, 0xE0E3E9);
     char s[200];
     if (pod_mysza >= 0 && pod_mysza < nlink && !laduje) {
         char pel[ADR];
@@ -617,12 +672,12 @@ void wwwg_rysuj(int x, int y) {
         else k_strncpy(s, "(link nieobsługiwany)", sizeof s);
     } else k_strncpy(s, status, sizeof s);
     fb_klip_zawez(x, st, CW - 60, STAT);
-    fb_tekst(x + 8, st + 4, s, 0x404040, FB_PRZEZR, 1);
+    fb_napis(x + 14, st + 5, s, 0x4B5160, F_MALY);
     fb_klip(kx, ky, kw, kh);
     if (dok_h > vh) {
         int proc = (przewin + vh) * 100 / dok_h; if (proc > 100) proc = 100;
         char p[8]; ksprintf(p, sizeof p, "%d%%", proc);
-        fb_tekst(x + CW - 8 - fb_tekst_szer(p, 1), st + 4, p, 0x808080, FB_PRZEZR, 1);
+        fb_napis(x + CW - 14 - fb_napis_szer(p, F_MALY), st + 5, p, 0x6B7280, F_MALY);
     }
 }
 
@@ -660,11 +715,11 @@ static void dalej(void) { if (phist >= 0 && phist < nhist - 1) { hist[phist].prz
 
 void wwwg_klik(int lx, int ly) {
     if (ly < NARZ) {
-        if (lx >= 6 && lx < 34) wstecz();
-        else if (lx >= 38 && lx < 66) dalej();
-        else if (lx >= 70 && lx < 98) { if (laduje) przerwij = 1; else k_strncpy(do_otwarcia, adres, ADR); }
-        else if (lx >= 102 && lx < 130) k_strncpy(do_otwarcia, START, ADR);
-        else if (lx >= 138) { edytuj = 1; zastap = 1; k_strncpy(edycja, adres, sizeof edycja); gui_www_brudne(0, 0, CW, NARZ); }
+        if (lx >= 8 && lx < 45) wstecz();
+        else if (lx >= 46 && lx < 83) dalej();
+        else if (lx >= 84 && lx < 121) { if (laduje) przerwij = 1; else k_strncpy(do_otwarcia, adres, ADR); }
+        else if (lx >= 122 && lx < 159) k_strncpy(do_otwarcia, START, ADR);
+        else if (lx >= 168) { edytuj = 1; zastap = 1; k_strncpy(edycja, adres, sizeof edycja); gui_www_brudne(0, 0, CW, NARZ); }
         return;
     }
     if (edytuj) { edytuj = 0; gui_www_brudne(0, 0, CW, NARZ); }
@@ -695,6 +750,8 @@ void wwwg_ciagnij(int lx, int ly) {
 void wwwg_puszczenie(void) { if (ciag_suwak >= 0) { ciag_suwak = -1; gui_www_brudne(CW - SUWAK, NARZ, SUWAK, widok_h()); } }
 
 int wwwg_najedz(int lx, int ly) {
+    int nn = (ly >= 8 && ly < 44 && lx >= 8 && lx < 159) ? (lx - 8) / 38 : -1;
+    if (nn != narz_najechany) { narz_najechany = nn; gui_www_brudne(0, 0, 170, NARZ); }
     int l = link_w(lx, ly);
     if (l == pod_mysza) return 0;
     pod_mysza = l;

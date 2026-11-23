@@ -181,17 +181,19 @@ static const przycisk_t PRZ[] = {
     { "Liczby rzymskie", K_RZYM, 0, 0, 7, 4 },
 };
 #define PRZ_N ((int)(sizeof PRZ / sizeof PRZ[0]))
-#define BX0 10
-#define BY0 182
-#define BW 72
-#define BH 38
+#define BX0 12
+#define BY0 222
+#define BW 84
+#define BH 50
+#define BH2 42
 #define BG 6
 
 static void prz_prost(int i, int *x, int *y, int *w, int *h) {
+    int r = PRZ[i].wiersz;
     *x = BX0 + PRZ[i].kol * (BW + BG);
-    *y = BY0 + PRZ[i].wiersz * (BH + BG);
+    *y = BY0 + (r < 5 ? r * (BH + BG) : 5 * (BH + BG) + (r - 5) * (BH2 + BG));
     *w = PRZ[i].szer * BW + (PRZ[i].szer - 1) * BG;
-    *h = BH;
+    *h = r < 5 ? BH : BH2;
 }
 
 static int dni_do(int cel_m, int cel_d, int wielkanoc_cel, char *data, u32 max) {
@@ -296,44 +298,47 @@ static void akcja(int i) {
 /* ---------- rysowanie ---------- */
 
 void kalk_rysuj(int x, int y) {
-    fb_prost(x, y, CW, CH, 0xEDEBE6);
+    fb_prost(x, y, CW, CH, 0xF3F4F7);
     /* wyświetlacz */
-    fb_prost_zaokr(x + 10, y + 10, CW - 20, 76, 6, 0x1C2A4A);
+    fb_zaokr_gradient(x + 12, y + 12, CW - 24, 96, 12, 0x24305A, 0x161D38);
     char t[64], r[48];
-    const char *op = operacja == '+' ? "+" : operacja == '-' ? "−" : operacja == '*' ? "×" : operacja == '/' ? "÷" : "";
-    if (operacja) { formatuj(akum, t, sizeof t); char o[80]; ksprintf(o, sizeof o, "%s %s", t, op); fb_tekst(x + CW - 20 - fb_tekst_szer(o, 1), y + 16, o, 0x8CA0C8, FB_PRZEZR, 1); }
+    const char *op = operacja == '+' ? "+" : operacja == '-' ? "\u2212" : operacja == '*' ? "\u00D7" : operacja == '/' ? "\u00F7" : "";
+    if (operacja) {
+        formatuj(akum, t, sizeof t); char o[80]; ksprintf(o, sizeof o, "%s %s", t, op);
+        fb_napis(x + CW - 28 - fb_napis_szer(o, F_TEKST), y + 20, o, 0x9AAAD0, F_TEKST);
+    }
     if (blad) k_strncpy(t, "Błąd", sizeof t);
     else if (wpis[0] && !nowa) k_strncpy(t, wpis, sizeof t);
     else formatuj(wartosc, t, sizeof t);
-    int sk = fb_tekst_szer(t, 2) <= CW - 40 ? 2 : 1;
-    fb_tekst(x + CW - 20 - fb_tekst_szer(t, sk), y + 36, t, 0xFFFFFF, FB_PRZEZR, sk);
+    int f = fb_napis_szer(t, F_WIELKI) <= CW - 56 ? F_WIELKI : F_DUZY;
+    fb_napis(x + CW - 28 - fb_napis_szer(t, f), y + 104 - fb_napis_wys(f) - (f == F_WIELKI ? 0 : 6), t, 0xFFFFFF, f);
     if (rzymskie) {
         rzymska((wpis[0] && !nowa) ? wpis_wartosc() : wartosc, r);
-        fb_tekst(x + 20, y + 16, r, 0xF2C230, FB_PRZEZR, 1);
+        fb_napis(x + 28, y + 20, r, 0xF6C640, F_TEKST_B);
     }
     /* panel z Pisma Świętego */
-    fb_prost_zaokr(x + 10, y + 94, CW - 20, 80, 6, 0xC9A43A);
-    fb_prost_zaokr(x + 12, y + 96, CW - 24, 76, 5, 0xFBF6E6);
-    fb_ikona(x + 18, y + 102, fb_ikona_nr(11), 1);
-    fb_tekst(x + 38, y + 102, panel_tytul, 0x7A5A10, FB_PRZEZR, 1);
-    fb_tekst(x + 39, y + 102, panel_tytul, 0x7A5A10, FB_PRZEZR, 1);
-    fb_tekst_zawin(x + 18, y + 122, panel, 35, 0x3A3020, 16);
+    fb_zaokr(x + 12, y + 118, CW - 24, 94, 12, 0xFBF6E6, 256);
+    fb_zaokr_ramka(x + 12, y + 118, CW - 24, 94, 12, 0xC9A43A, 120);
+    fb_ikona_rys(x + 24, y + 128, 11, 24);
+    fb_napis(x + 56, y + 131, panel_tytul, 0x7A5A10, F_TEKST_B);
+    fb_napis_zawin(x + 24, y + 156, CW - 48, panel, 0x3A3020, F_TEKST, 18);
     /* przyciski */
     for (int i = 0; i < PRZ_N; i++) {
         int bx, by, bw, bh;
         prz_prost(i, &bx, &by, &bw, &bh);
         const przycisk_t *p = &PRZ[i];
-        u32 tlo = p->typ == K_CYFRA || p->typ == K_PRZECINEK || p->typ == K_ZNAK ? 0xFFFFFF :
-                  p->typ == K_ROWNA ? 0x2C5AA0 : p->typ == K_PRZEBACZ ? 0x6A1B9A :
-                  p->typ == K_OP ? 0xDCE4F2 : p->typ == K_RZYM && rzymskie ? 0xF2C230 :
-                  p->typ >= K_DZIESIECINA ? 0xF4EBCF : 0xE4E2DC;
-        u32 tk = (p->typ == K_ROWNA || p->typ == K_PRZEBACZ) ? 0xFFFFFF : 0x1E2230;
-        if (i == wcisniety) tlo = fb_mieszaj(tlo, 0x000000, 50);
-        fb_prost_zaokr(x + bx + 1, y + by + 2, bw, bh, 5, 0xC8C4BA);
-        fb_prost_zaokr(x + bx, y + by, bw, bh, 5, tlo);
-        int s = (p->typ == K_CYFRA || p->typ == K_OP || p->typ == K_ROWNA) ? 2 : 1;
-        if (fb_tekst_szer(p->t, s) > bw - 8) s = 1;
-        fb_tekst(x + bx + (bw - fb_tekst_szer(p->t, s)) / 2, y + by + (bh - 16 * s) / 2, p->t, tk, FB_PRZEZR, s);
+        int cyfra = p->typ == K_CYFRA || p->typ == K_PRZECINEK || p->typ == K_ZNAK;
+        u32 tlo = cyfra ? 0xFFFFFF : p->typ == K_ROWNA ? 0x2F62D9 : p->typ == K_PRZEBACZ ? 0x7D4CC9 :
+                  p->typ == K_OP ? 0xE6ECF7 : p->typ == K_RZYM && rzymskie ? 0xF6C640 :
+                  p->typ >= K_DZIESIECINA ? 0xF6EFD9 : 0xE9EBF0;
+        u32 tk = (p->typ == K_ROWNA || p->typ == K_PRZEBACZ) ? 0xFFFFFF : p->typ == K_OP ? 0x2F62D9 :
+                 p->typ >= K_DZIESIECINA ? 0x6B4E12 : 0x1B1F2A;
+        if (i == wcisniety) tlo = fb_mieszaj(tlo, 0x000000, 40);
+        fb_zaokr(x + bx, y + by, bw, bh, 10, tlo, 256);
+        if (cyfra || p->typ >= K_DZIESIECINA) fb_zaokr_ramka(x + bx, y + by, bw, bh, 10, 0x000000, 26);
+        int fn = (cyfra || p->typ == K_OP || p->typ == K_ROWNA || p->typ == K_COFNIJ || p->typ == K_PIERW) ? F_H2 : F_TEKST_B;
+        if (fb_napis_szer(p->t, fn) > bw - 10) fn = F_TEKST_B;
+        fb_napis(x + bx + (bw - fb_napis_szer(p->t, fn)) / 2, y + by + (bh - fb_napis_wys(fn)) / 2, p->t, tk, fn);
     }
 }
 
@@ -368,4 +373,4 @@ void kalk_init(int cw, int ch) {
 }
 
 int kalk_szer(void) { return BX0 * 2 + 4 * BW + 3 * BG; }
-int kalk_wys(void) { return BY0 + 8 * (BH + BG) + 6; }
+int kalk_wys(void) { return BY0 + 5 * (BH + BG) + 3 * (BH2 + BG) + 6; }

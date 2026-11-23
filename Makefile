@@ -14,7 +14,7 @@ OBJS = build/boot.o build/kmain.o build/vga.o build/klawiatura.o build/rtc.o \
 
 all: amenos.iso
 
-build/%.o: src/%.c src/kernel.h src/usb.h src/www.h src/obrazy.h src/font_pl.h src/muzyka_dane.h src/znaki_dane.h src/grafika_dane.h | build
+build/%.o: src/%.c src/kernel.h src/usb.h src/www.h src/obrazy.h src/font_pl.h src/muzyka_dane.h src/znaki_dane.h src/grafika_dane.h src/wyglad_dane.h | build
 	$(CC) $(CFLAGS) -c $< -o $@
 
 build/boot.o: src/boot.asm | build

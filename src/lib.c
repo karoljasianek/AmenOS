@@ -2,14 +2,16 @@
 #include "kernel.h"
 
 void *memset(void *dst, int c, u32 n) {
-    u8 *d = dst;
-    while (n--) *d++ = (u8)c;
+    void *d = dst;
+    __asm__ volatile("rep stosb" : "+D"(d), "+c"(n) : "a"(c) : "memory");
     return dst;
 }
 
 void *memcpy(void *dst, const void *src, u32 n) {
-    u8 *d = dst; const u8 *s = src;
-    while (n--) *d++ = *s++;
+    void *d = dst; const void *s = src;
+    u32 slowa = n >> 2, reszta = n & 3;
+    __asm__ volatile("rep movsl" : "+D"(d), "+S"(s), "+c"(slowa) : : "memory");
+    __asm__ volatile("rep movsb" : "+D"(d), "+S"(s), "+c"(reszta) : : "memory");
     return dst;
 }
 
