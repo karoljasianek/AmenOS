@@ -28,6 +28,11 @@ void kmain(u32 magic, const u32 *mbi) {
     wolna = (u32)koniec_jadra;
     granica = pamiec_kb ? 0x100000u + pamiec_kb * 1024u - 0x10000u : 0;
     if (granica > 0xE0000000u) granica = 0xE0000000u;
+    /* "bezaudio" wyłącza kartę dźwiękową - zostaje głośniczek PC */
+    int bez_audio = 0;
+    if (magic == 0x2BADB002 && (mbi[0] & 4) && mbi[4])
+        for (const char *c = (const char *)mbi[4]; *c; c++) if (!k_memcmp(c, "bezaudio", 8)) bez_audio = 1;
+    if (!bez_audio) audio_init();
     int grafika = magic == 0x2BADB002 && fb_init(mbi);
     vga_init(grafika);
     if (grafika) {

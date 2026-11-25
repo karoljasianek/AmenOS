@@ -156,7 +156,7 @@ static void licz(void) {
     case '-': w = akum - b; ok = abs64(w) <= MAKS; break;
     case '*': ok = mnoz(akum, b, &w); break;
     case '/':
-        if (!b) { pokaz_blad("Dzielenie przez zero", "Nieskończony jest tylko Bóg. Spróbuj podzielić przez coś innego."); return; }
+        if (!b) { pokaz_blad("Dzielenie przez zero", "Nieskończony jest tylko Bóg. Spróbuj podzielić przez coś innego."); dzw_efekt(E_AMEN); return; }
         ok = dziel(akum, b, &w);
         break;
     default: w = b;

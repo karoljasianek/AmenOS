@@ -60,7 +60,7 @@ static okno_t okna[O_N] = {        /* okna programów z aplikacje.c (O_APKA...) 
     [O_KALENDARZ] = { 0, 0, 380, 470, "Kalendarz liturgiczny", 1, 0, 0 },
     [O_ZEGAR]     = { 0, 0, 300, 380, "Zegar",                 2, 0, 0 },
     [O_MUZYKA]    = { 0, 0, 500, 400, "Muzyka mszalna",        4, 0, 0 },
-    [O_INFO]      = { 0, 0, 480, 270, "O systemie",           11, 0, 0 },
+    [O_INFO]      = { 0, 0, 500, 296, "O systemie",           11, 0, 0 },
     [O_WWW]       = { 0, 0, 960, 700, "Przeglądarka",          5, 0, 0 },
     [O_KALK]      = { 0, 0, 326, 540, "Kalkulator biblijny",  12, 0, 0 },
     [O_KOMUNIKAT] = { 0, 0, 440, 160, "AmenOS",               11, 0, 0 },
@@ -79,7 +79,7 @@ static int klient_ciag = -1;                /* okno, w którym trzymamy przycisk
 static int www_pod = 0;
 
 /* najechanie myszą (podświetlenia) */
-enum { H_BRAK, H_ZAMKNIJ, H_MINIM, H_PASEK, H_MENU, H_IKONA, H_MENU_DOL, H_LIT };
+enum { H_BRAK, H_ZAMKNIJ, H_MINIM, H_PASEK, H_MENU, H_IKONA, H_MENU_DOL, H_LIT, H_GLOSNIK };
 static int hov_typ, hov_id, hov_x, hov_y, hov_w, hov_h;
 
 /* przeglądarka graficzna (www_gui.c) */
@@ -172,6 +172,7 @@ static void komunikat(const char *s) {
     okna[O_KOMUNIKAT].x = (fb_w - ow(O_KOMUNIKAT)) / 2;
     okna[O_KOMUNIKAT].y = (fb_h - PASEK_H - oh(O_KOMUNIKAT)) / 2;
     okno_otworz(O_KOMUNIKAT);
+    dzw_efekt(E_POWIADOM);
 }
 
 int gui_terminal_aktywny(void) { return !menu_otwarte && okno_aktywne() == O_TERMINAL; }
@@ -401,7 +402,7 @@ static int muz_ton;
 #define MUZ_PRZ_Y  (12 + UTWORY_N * MUZ_WIERSZ + 10)
 
 static void muzyka_stop(void) {
-    if (muz_gra >= 0) glosnik_cisza();
+    if (muz_gra >= 0) { if (audio_jest) dzw_utwor_stop(); else glosnik_cisza(); }
     muz_gra = -1; muz_ton = 0;
     if (okna[O_MUZYKA].otwarte) okno_brudne(O_MUZYKA);
     brudny_pasek();
@@ -419,17 +420,23 @@ static void muzyka_graj(int i) {
     muz_gra = i; muz_nuta = 0; muz_start = zegar_ms();
     muz_calosc = 0;
     for (int k = 0; k < utwory[i].n; k++) muz_calosc += utwory[i].czasy[k];
-    muzyka_nuta(muz_start);
+    if (audio_jest) dzw_utwor(&utwory[i]);           /* karta dźwiękowa: organy, równo co do próbki */
+    else muzyka_nuta(muz_start);
     okno_brudne(O_MUZYKA);
     brudny_pasek();
 }
 
 static void muzyka_tik(u32 t) {
     if (muz_gra < 0) return;
-    if (muz_ton && (int)(t - muz_ton_do) >= 0) { glosnik_cisza(); muz_ton = 0; }
-    if ((int)(t - muz_koniec) >= 0) {
-        if (++muz_nuta >= utwory[muz_gra].n) { muzyka_stop(); return; }
-        muzyka_nuta(t);
+    if (audio_jest) {                                /* gra sekwencer syntezatora */
+        if (!dzw_utwor_gra()) { muzyka_stop(); return; }
+        muz_start = t - dzw_utwor_ms();
+    } else {                                         /* głośniczek PC: nuta po nucie */
+        if (muz_ton && (int)(t - muz_ton_do) >= 0) { glosnik_cisza(); muz_ton = 0; }
+        if ((int)(t - muz_koniec) >= 0) {
+            if (++muz_nuta >= utwory[muz_gra].n) { muzyka_stop(); return; }
+            muzyka_nuta(t);
+        }
     }
     if (widoczne(O_MUZYKA) && t - muz_ost_rys > 250) {
         muz_ost_rys = t;
@@ -499,19 +506,20 @@ static void rysuj_info(int x, int y) {
     } else k_strncpy(cpu, "x86", sizeof cpu);
     char *p = cpu; while (*p == ' ') p++;
     fb_prost(x + 24, y + 92, okna[O_INFO].cw - 48, 1, LINIA);
-    const char *et[4] = { "Ekran", "Pamięć", "Procesor", "Sieć" };
-    char wart[4][64];
+    const char *et[5] = { "Ekran", "Pamięć", "Procesor", "Sieć", "Dźwięk" };
+    char wart[5][64];
     ksprintf(wart[0], 64, "%d × %d", fb_w, fb_h);
     ksprintf(wart[1], 64, "%d MB", (int)(pamiec_kb / 1024));
     fb_napis_przytnij(wart[2], 64, p, okna[O_INFO].cw - 140, F_TEKST);
     if (siec_gotowa) { char ip[16]; ip_tekst(moje_ip, ip); ksprintf(wart[3], 64, "połączona, %s", ip); }
     else k_strncpy(wart[3], "nieuruchomiona", 64);
-    for (int i = 0; i < 4; i++) {
+    fb_napis_przytnij(wart[4], 64, audio_opis, okna[O_INFO].cw - 140, F_TEKST);
+    for (int i = 0; i < 5; i++) {
         fb_napis(x + 24, y + 106 + i * 26, et[i], SZARY_T, F_TEKST);
         fb_napis(x + 112, y + 106 + i * 26, wart[i], TEKST, F_TEKST);
     }
     (void)t;
-    fb_napis(x + 24, y + 226, "Niech będzie pochwalony Jezus Chrystus", 0x8A6A20, F_TEKST_B);
+    fb_napis(x + 24, y + 252, "Niech będzie pochwalony Jezus Chrystus", 0x8A6A20, F_TEKST_B);
 }
 
 static void rysuj_komunikat(int x, int y) {
@@ -590,6 +598,15 @@ static int lit_w(void) {                        /* obszar obchodu dnia z lewej s
 }
 
 static void wylacz(void);
+
+static int glosnik_x(void) {                       /* środek ikony głośnika w zasobniku */
+    char t[24];
+    ksprintf(t, sizeof t, "%02d:%02d", dzis.godz, dzis.min);
+    int sz = fb_napis_szer(t, F_TEKST);
+    ksprintf(t, sizeof t, "%02d.%02d.%d", dzis.dzien, dzis.mies, dzis.rok);
+    int sd = fb_napis_szer(t, F_MALY);
+    return fb_w - 20 - (sz > sd ? sz : sd) - 40;
+}
 
 static void uruchom(int a) {
     switch (a) {
@@ -761,6 +778,21 @@ static void rysuj_pasek(void) {
     int sd = fb_napis_szer(t, F_MALY);
     fb_napis(fb_w - 20 - sd, y + 28, t, 0xC8CEDC, F_MALY);
     int lewo = fb_w - 20 - (sz > sd ? sz : sd);
+    if (audio_jest) {                                /* głośnik: kliknięcie zmienia głośność */
+        int gx = lewo - 40, gy = y + PASEK_H / 2, g = audio_glosnosc_pobierz();
+        if (hov_typ == H_GLOSNIK) fb_zaokr(gx - 10, y + 8, 40, PASEK_H - 16, 8, 0xFFFFFF, 24);
+        fb_prost(gx - 2, gy - 4, 5, 8, 0xFFFFFF);
+        for (int k = 0; k < 7; k++) fb_prost(gx + 3, gy - 4 - k, 1 + k / 2 + 1, 8 + 2 * k, 0xFFFFFF);
+        int kx, ky, kw, kh;
+        fb_klip_pobierz(&kx, &ky, &kw, &kh);
+        fb_klip_zawez(gx + 12, gy - 12, 16, 24);
+        if (g > 0) fb_okrag_aa(gx + 9, gy, 6, 2, 0xFFFFFF, 256);
+        if (g > 40) fb_okrag_aa(gx + 9, gy, 10, 2, 0xFFFFFF, 256);
+        if (g > 75) fb_okrag_aa(gx + 9, gy, 14, 2, 0xFFFFFF, 256);
+        fb_klip(kx, ky, kw, kh);
+        if (!g) { fb_linia_aa(gx + 13, gy - 5, gx + 22, gy + 5, 2, 0xFF8A8A); fb_linia_aa(gx + 22, gy - 5, gx + 13, gy + 5, 2, 0xFF8A8A); }
+        lewo -= 44;
+    }
     if (muz_gra >= 0) fb_napis(lewo - 30, y + 15, "♫", 0xF6DE8E, F_SREDNI);
 }
 
@@ -862,6 +894,14 @@ static void wylacz(void) {
 static void klik_pasek(int x) {
     int lista[PASEK_APPS_N], n = pasek_lista(lista), bx = pasek_x0(n);
     if (x < lit_w()) { uruchom(A_KALENDARZ); return; }
+    int gx = glosnik_x();
+    if (audio_jest && x >= gx - 10 && x < gx + 30) {
+        int g = audio_glosnosc_pobierz();
+        audio_glosnosc(g > 80 ? 60 : g > 45 ? 30 : g > 0 ? 0 : 100);
+        brudny_pasek();
+        dzw_efekt(E_POWIADOM);
+        return;
+    }
     for (int k = 0; k <= n; k++) {
         int px = bx + k * (PB + 4);
         if (x < px || x >= px + PB) continue;
@@ -964,6 +1004,8 @@ static void ustal_najechanie(void) {
     if (my >= fb_h - PASEK_H) {
         int lista[PASEK_APPS_N], n = pasek_lista(lista), bx = pasek_x0(n);
         if (mx < lit_w()) { typ = H_LIT; id = 0; rx = 0; ry = fb_h - PASEK_H; rw = lit_w() + 4; rh = PASEK_H; goto koniec; }
+        int gx = glosnik_x();
+        if (audio_jest && mx >= gx - 10 && mx < gx + 30) { typ = H_GLOSNIK; rx = gx - 12; ry = fb_h - PASEK_H; rw = 46; rh = PASEK_H; goto koniec; }
         for (int k = 0; k <= n; k++) {
             int px = bx + k * (PB + 4);
             if (mx >= px && mx < px + PB) { typ = H_PASEK; id = k; rx = px; ry = fb_h - PASEK_H; rw = PB; rh = PASEK_H; goto koniec; }
@@ -1113,6 +1155,9 @@ void gui_pompuj(void) {
             ost_sek = dzis.sek;
             if (widoczne(O_ZEGAR)) okno_brudne(O_ZEGAR);
             if (dzis.min != ost_min) {
+                /* pełna godzina przy otwartym zegarze: dzwon wybija godziny jak na wieży kościoła */
+                if (ost_min >= 0 && dzis.min == 0 && widoczne(O_ZEGAR) && audio_jest)
+                    dzw_bij(dzis.godz % 12 ? dzis.godz % 12 : 12, 196000, 1900);
                 ost_min = dzis.min;
                 liturgia(dzis.rok, dzis.mies, dzis.dzien, &dzis_lit);
                 brudny_pasek();
@@ -1198,6 +1243,7 @@ void gui_powitanie(void) {
     }
     fb_klip_caly();
     for (int i = 0; i < 64; i++) ps2_obsluz();
+    dzw_efekt(E_START);
     gui_aktywne = 1;
     brudne_wszystko();
 }

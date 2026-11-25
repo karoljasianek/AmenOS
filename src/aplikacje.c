@@ -154,6 +154,7 @@ static void pi_klik(int lx, int ly) {
         }
         pi_edyt = -1;
         pi_status = "Duch wieje, kędy chce (J 3,8) - numery wylosowane. Organista ma dziś niespodziankę!";
+        dzw_efekt(E_AKORD);
     } else if (w_prost(lx, ly, PI_W - 156, 512, 140, 38)) {
         pi_edyt = pi_edyt >= 0 ? -1 : 0;
         pi_status = pi_edyt >= 0 ? "Wpisz numer (do 4 cyfr). Enter - następny rząd, Esc - koniec." : "Zapisano. Organista już kartkuje śpiewnik.";
@@ -286,10 +287,12 @@ static void mo_rysuj(int x, int y) {
 static void ro_plus(void) {
     ro_razem++;
     mo_status = "";
+    dzw_efekt(E_PACIOREK);
     if (++ro_paciorek == 10) {
         ro_paciorek = 0;
         if (ro_dzies == 4) { ro_dzies = 0; mo_status = "Cała część różańca! Babcia byłaby dumna."; }
         else { ro_dzies++; mo_status = "Dziesiątka zaliczona! Anioł Stróż przybija piątkę."; }
+        dzw_nuta(INS_DZWONEK, 1567980, 0, 70);
     }
     gui_apka_cala(AP_MODLITWY);
 }
@@ -571,7 +574,7 @@ static void sp_klik(int lx, int ly) {
     int gy = 64, dy = SP_H - SP_DOL;
     if (sp.etap == 0 && w_prost(lx, ly, SP_W / 2 - 90, gy + 70 + 240, 180, 44)) { sp_start(); return; }
     if (sp.etap == 10 && w_prost(lx, ly, SP_W / 2 - 90, gy + 70 + 190, 180, 44)) { sp.etap = 0; gui_apka_cala(AP_SPOWIEDZ); return; }
-    if (sp.etap == 8 && w_prost(lx, ly, SP_W / 2 - 150, dy + 42, 300, 46)) { sp.etap = 9; sp.niszcz_t0 = zegar_ms(); gui_apka_cala(AP_SPOWIEDZ); return; }
+    if (sp.etap == 8 && w_prost(lx, ly, SP_W / 2 - 150, dy + 42, 300, 46)) { sp.etap = 9; sp.niszcz_t0 = zegar_ms(); dzw_efekt(E_NISZCZARKA); gui_apka_cala(AP_SPOWIEDZ); return; }
     if (sp.etap >= 1 && sp.etap <= 7 && !sp.kn) {
         if (ly >= dy + 8 && ly < dy + 48 && sp_dom) { memset(sp.wej, 0, sizeof sp.wej); sp_odpowiedz(); return; }
         if (w_prost(lx, ly, SP_W - 62, dy + 56, 46, 46)) sp_odpowiedz();
@@ -580,7 +583,7 @@ static void sp_klik(int lx, int ly) {
 
 static int sp_klawisz(int k) {
     if (sp.etap == 0 || sp.etap == 10) { if (k == KEY_ENTER) { if (sp.etap) { sp.etap = 0; gui_apka_cala(AP_SPOWIEDZ); } else sp_start(); return 1; } return 0; }
-    if (sp.etap == 8) { if (k == KEY_ENTER) { sp.etap = 9; sp.niszcz_t0 = zegar_ms(); gui_apka_cala(AP_SPOWIEDZ); return 1; } return 0; }
+    if (sp.etap == 8) { if (k == KEY_ENTER) { sp.etap = 9; sp.niszcz_t0 = zegar_ms(); dzw_efekt(E_NISZCZARKA); gui_apka_cala(AP_SPOWIEDZ); return 1; } return 0; }
     if (sp.etap == 9) return 1;
     if (k == KEY_ESC) return 0;
     if (sp.kn) return 1;
@@ -594,6 +597,7 @@ static void sp_tik(u32 t) {
     if (sp.kn) {
         if ((int)(t - sp.nast) >= 0) {
             sp_dodaj(sp.kol_kto[0], sp.kol[0]);
+            dzw_efekt(E_WIADOMOSC);
             for (int i = 0; i < sp.kn - 1; i++) { memcpy(sp.kol[i], sp.kol[i + 1], sizeof sp.kol[0]); sp.kol_kto[i] = sp.kol_kto[i + 1]; }
             memset(sp.kol[--sp.kn], 0, sizeof sp.kol[0]);
             if (sp.kn) sp.nast = t + sp_opoznienie(sp.kol[0]);
@@ -617,7 +621,7 @@ static void sp_zamk(void) { sp_wymaz(); sp_podp = sp_dom = 0; }
 #define KO_W 560
 #define KO_H 680
 static int ko_etap, ko_seria, ko_faza, ko_przel;
-static u32 ko_t0, ko_tp;
+static u32 ko_t0, ko_tp, ko_dzw_ms;
 
 static void ko_gwiazdka(int cx, int cy, int a) {
     u32 c = fb_mieszaj(0x1C2550, 0xFFF4C8, a);
@@ -662,7 +666,7 @@ static void ko_rysuj(int x, int y) {
                          0xFFFFFF, F_TEKST, 21);
     } else if (ko_etap == 2) {
         fb_napis_srodek(x, KO_W, ty + 60, "Dzyń!  Dzyń!  Dzyń!", 0xF6DE8E, F_DUZY);
-        fb_napis_srodek(x, KO_W, ty + 106, "(dzwonki - głośnik komputera stara się, jak może)", 0x8C96C0, F_MALY);
+        fb_napis_srodek(x, KO_W, ty + 106, audio_jest ? "(dzwonki ministranckie - tym razem prawdziwe)" : "(dzwonki - głośnik komputera stara się, jak może)", 0x8C96C0, F_MALY);
     } else if (ko_etap <= 4) {
         fb_napis_srodek(x, KO_W, ty + 30, "Ciało Chrystusa.", 0xF6DE8E, F_DUZY);
         if (ko_etap == 3) {
@@ -697,8 +701,15 @@ static int ko_klawisz(int k) { if (k == KEY_ENTER || k == ' ') { ko_dalej(); ret
 
 static void ko_tik(u32 t) {
     static u32 ost;
-    if (ko_etap == 1 && t - ko_t0 > 2200) { ko_etap = 2; ko_seria = 0; ko_faza = 0; ko_t0 = ko_tp = t; gui_apka_brudne(AP_KOMUNIA, 0, 410, KO_W, KO_H - 410); }
-    else if (ko_etap == 2) {                                  /* trzy serie dzwonków */
+    if (ko_etap == 1 && t - ko_t0 > 2200) {
+        ko_etap = 2; ko_seria = 0; ko_faza = 0; ko_t0 = ko_tp = t;
+        if (audio_jest) ko_dzw_ms = dzw_dzwonki(3) + 200;     /* prawdziwe dzwonki ministranckie */
+        gui_apka_brudne(AP_KOMUNIA, 0, 410, KO_W, KO_H - 410);
+    }
+    else if (ko_etap == 2 && audio_jest) {
+        if (t - ko_t0 >= ko_dzw_ms) { ko_etap = 3; gui_apka_brudne(AP_KOMUNIA, 0, 410, KO_W, KO_H - 410); }
+    }
+    else if (ko_etap == 2) {                                  /* trzy serie dzwonków z głośniczka PC */
         if (ko_faza == 0) {
             if (t - ko_tp >= 28) { ko_tp = t; ko_przel = !ko_przel; glosnik_ton(ko_przel ? 2093 : 2637); }
             if (t - ko_t0 >= 450) { glosnik_cisza(); ko_faza = 1; ko_t0 = t; }
@@ -715,7 +726,7 @@ static void ko_tik(u32 t) {
 
 static void ko_otw(void) { ko_etap = 0; }
 static void ko_zamk(void) {
-    if (ko_etap == 2) glosnik_cisza();
+    if (ko_etap == 2 && !audio_jest) glosnik_cisza();
     if (ko_etap == 5) gui_muzyka_stop();
     ko_etap = 0;
 }
@@ -792,6 +803,7 @@ static void og_przypnij(void) {
     if (ogl_n >= OGL_N) { gui_komunikat("Tablica pełna! Zdejmij któreś ogłoszenie, zanim kościelny przybije nowe gwoździem."); return; }
     k_strncpy(ogloszenia[ogl_n++], og_wej, sizeof ogloszenia[0]);
     og_wej[0] = 0;
+    dzw_efekt(E_KLIK);
     gui_apka_cala(AP_OGLOSZENIA);
 }
 

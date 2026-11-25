@@ -751,7 +751,48 @@ static void wysrodkuj_zawin(int y, const char *s, int szer, u8 a) {
     }
 }
 
+static void cmd_dzwiek(char *p) {
+    char *a = k_token(&p), *b = k_token(&p), f[24] = "";
+    if (a) k_fold_pl(f, a, sizeof f);
+    vga_color(BIALY, CZARNY);
+    kprintf("Karta dźwiękowa: ");
+    vga_color(audio_jest ? JASNOZIELONY : ZOLTY, CZARNY);
+    kprintf("%s\n", audio_opis);
+    vga_color(SZARY, CZARNY);
+    if (!audio_jest) {
+        kprintf("Nie znaleziono karty Intel HD Audio ani AC'97 - gra głośniczek PC. (etap %d)\n", audio_krok);
+        kprintf("W QEMU dodaj np.: -device intel-hda -device hda-output  albo  -device AC97\n");
+        glosnik_ton(880); czekaj_ms(200); glosnik_cisza();
+        return;
+    }
+    if (!k_strcmp(f, "poz")) { void audio_diagnoza(void); audio_diagnoza(); return; }
+    if (!k_strcmp(f, "glosnosc") && b) { int ok; audio_glosnosc(k_atoi(b, &ok)); kprintf("Głośność: %d%%\n", audio_glosnosc_pobierz()); dzw_efekt(E_POWIADOM); return; }
+    kprintf("Głośność: %d%%  (dzwiek glosnosc 0-100)\n", audio_glosnosc_pobierz());
+    if (!k_strcmp(f, "dzwon")) {
+        int ok, n = b ? k_atoi(b, &ok) : 3;
+        if (n < 1) n = 1;
+        if (n > 12) n = 12;
+        kprintf("Bije dzwon (%d)...\n", n);
+        dzw_bij(n, 196000, 1900);
+        czekaj_ms((u32)n * 1900 + 1500);
+    } else if (!k_strcmp(f, "amen")) {
+        kprintf("A-men (kadencja plagalna, F-dur - C-dur)\n");
+        dzw_efekt(E_AMEN); czekaj_ms(2600);
+    } else if (!k_strcmp(f, "organy")) {
+        kprintf("Organy: gama C-dur w górę i akord\n");
+        static const u8 g[8] = { 60, 62, 64, 65, 67, 69, 71, 72 };
+        for (int i = 0; i < 8; i++) dzw_pozniej((u32)i * 330, INS_ORGANY, dzw_mhz(g[i]), 300, 140);
+        dzw_pozniej(2700, INS_ORGANY, dzw_mhz(48), 2000, 90); dzw_pozniej(2700, INS_ORGANY, dzw_mhz(64), 2000, 80);
+        dzw_pozniej(2700, INS_ORGANY, dzw_mhz(67), 2000, 80); dzw_pozniej(2700, INS_ORGANY, dzw_mhz(72), 2000, 80);
+        czekaj_ms(5200);
+    } else {
+        kprintf("Próba: dzwon i akord organów. Inne: dzwiek dzwon 3 | amen | organy\n");
+        dzw_efekt(E_START); czekaj_ms(3500);
+    }
+}
+
 static void dzwonki(void) {
+    if (audio_jest) { czekaj_ms(dzw_dzwonki(3)); return; }
     for (int seria = 0; seria < 3; seria++) {
         u32 t0 = zegar_ms(); int przel = 0;
         while (zegar_ms() - t0 < 450) {
@@ -1174,6 +1215,7 @@ static void cmd_pomoc(void) {
         { "www [adres]",          "przeglądarka internetowa" },
         { "siec / ping ADRES",    "stan sieci (adres IP) / sprawdzenie połączenia" },
         { "usb",                  "kontrolery i urządzenia USB (klawiatury, myszy)" },
+        { "dzwiek [dzwon N|amen|organy|glosnosc 0-100]", "karta dźwiękowa i próba dźwięku" },
         { "zegar",                "duży zegar z obchodem dnia" },
         { "parafia <nazwa>",      "ustaw nazwę parafii" },
         { "czas / strefa N",      "data i godzina / przesunięcie strefy" },
@@ -1264,6 +1306,7 @@ void powloka(u32 mem_kb) {
         else if (!k_strcmp(f, "www") || !k_strcmp(f, "przegladarka") || !k_strcmp(f, "internet")) { while (*p == ' ') p++; przegladarka(p); }
         else if (!k_strcmp(f, "siec")) cmd_siec(p);
         else if (!k_strcmp(f, "usb")) cmd_usb();
+        else if (!k_strcmp(f, "dzwiek") || !k_strcmp(f, "audio")) cmd_dzwiek(p);
         else if (!k_strcmp(f, "ping")) cmd_ping(k_token(&p));
         else if (!k_strcmp(f, "spowiedz")) cmd_spowiedz();
         else if (!k_strcmp(f, "komunia")) cmd_komunia();

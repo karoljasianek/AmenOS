@@ -31,10 +31,18 @@ u32 zegar_ms(void) {
 
 void czekaj_ms(u32 ms) {
     u32 t0 = zegar_ms();
-    while (zegar_ms() - t0 < ms) if (gui_aktywne) gui_pompuj();
+    while (zegar_ms() - t0 < ms) { audio_pompuj(); if (gui_aktywne) gui_pompuj(); }
 }
 
+/* Z kartą dźwiękową "głośniczek" gra organami - wszystkie stare miejsca brzmią od razu lepiej. */
+static u16 glosnik_glos;
+
 void glosnik_ton(u32 hz) {
+    if (audio_jest) {
+        if (glosnik_glos) dzw_pusc(glosnik_glos);
+        glosnik_glos = hz >= 20 ? dzw_nuta(INS_ORGANY, hz * 1000, 0, 150) : 0;
+        return;
+    }
     if (hz < 20) { glosnik_cisza(); return; }
     u32 dz = PIT_HZ / hz;
     outb(0x43, 0xB6);                    /* kanał 2, fala prostokątna */
@@ -43,4 +51,7 @@ void glosnik_ton(u32 hz) {
     outb(0x61, inb(0x61) | 0x03);
 }
 
-void glosnik_cisza(void) { outb(0x61, inb(0x61) & 0xFC); }
+void glosnik_cisza(void) {
+    if (glosnik_glos) { dzw_pusc(glosnik_glos); glosnik_glos = 0; }
+    outb(0x61, inb(0x61) & 0xFC);
+}

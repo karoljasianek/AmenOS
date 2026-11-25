@@ -10,11 +10,11 @@ OBJS = build/boot.o build/kmain.o build/vga.o build/klawiatura.o build/rtc.o \
        build/e1000.o build/siec.o build/przegladarka.o \
        build/fb.o build/gui.o \
        build/pci.o build/usb.o build/xhci.o build/uhci.o \
-       build/obrazy.o build/www_gui.o build/kalkulator.o build/aplikacje.o
+       build/obrazy.o build/www_gui.o build/kalkulator.o build/aplikacje.o build/audio.o build/synteza.o
 
 all: amenos.iso
 
-build/%.o: src/%.c src/kernel.h src/usb.h src/www.h src/obrazy.h src/font_pl.h src/muzyka_dane.h src/znaki_dane.h src/grafika_dane.h src/wyglad_dane.h src/apki.h | build
+build/%.o: src/%.c src/kernel.h src/usb.h src/www.h src/obrazy.h src/font_pl.h src/muzyka_dane.h src/znaki_dane.h src/grafika_dane.h src/wyglad_dane.h src/apki.h src/audio_dane.h | build
 	$(CC) $(CFLAGS) -c $< -o $@
 
 build/boot.o: src/boot.asm | build
@@ -37,9 +37,12 @@ iso/boot/amenos-tekst.bin: $(filter-out build/boot.o,$(OBJS)) build/boot_tekst.o
 amenos.iso: iso/boot/amenos.bin iso/boot/amenos-tekst.bin iso/boot/grub/grub.cfg
 	grub-mkrescue -o $@ iso 2>/dev/null
 
+# dźwięk: AUDIO=pa (PulseAudio), pipewire, alsa albo sdl
+AUDIO ?= pa
 uruchom: amenos.iso
 	qemu-system-i386 -cdrom amenos.iso -rtc base=localtime -m 128 -nic user,model=e1000 \
-		-device qemu-xhci -device usb-kbd -device usb-mouse
+		-device qemu-xhci -device usb-kbd -device usb-mouse \
+		-audiodev $(AUDIO),id=snd0 -device intel-hda -device hda-output,audiodev=snd0
 
 clean:
 	rm -rf build iso/boot/amenos.bin iso/boot/amenos-tekst.bin amenos.iso

@@ -81,6 +81,7 @@ void kbd_wloz_kod(u8 kod) {
 }
 
 void ps2_obsluz(void) {
+    audio_pompuj();
     usb_odpytaj();
     for (int i = 0; i < 32; i++) {
         u8 st = inb(0x64);

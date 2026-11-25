@@ -38,6 +38,24 @@ pośrodku, a kolor akcentu (np. dzisiejszy dzień w kalendarzu) to **kolor litur
   „Nieskończony jest tylko Bóg”. Działa też z klawiatury (cyfry, + - * /, Enter, Backspace, C, R),
 - **Terminal** — dotychczasowa powłoka w oknie (polecenia, przeglądarka tekstowa, sieć, USB).
 
+### Prawdziwy dźwięk
+
+AmenOS ma sterowniki kart dźwiękowych **Intel High Definition Audio** i **AC'97** (48 kHz,
+16 bitów, stereo) oraz własny syntezator, który liczy dźwięk na bieżąco:
+
+- **organy kościelne** — rejestry 16', 8', 4', 2 2/3' i 2' z delikatną „voix céleste”;
+  muzyka mszalna gra teraz organami, równo co do próbki,
+- **dzwon kościelny** z alikwotami jak w prawdziwym dzwonie (hum, prima, tercja mała, kwinta,
+  nominał…), każdy wybrzmiewa w swoim tempie — bije na powitanie systemu, a przy otwartym
+  zegarze **wybija pełne godziny** jak wieża kościoła,
+- **dzwonki ministranckie** w Komunii — tym razem prawdziwe, nie piski głośniczka,
+- **pogłos** jak w dużym kościele (ok. 2 s),
+- dźwięki programów: nowa wiadomość od spowiednika, **niszczarka** mieląca rozmowę, stuk
+  paciorków różańca, a **dzielenie przez zero w kalkulatorze kończy się organowym „A-men”**,
+- głośność w zasobniku (kliknięcie głośnika: 100% → 60% → 30% → wyciszenie).
+
+Bez karty dźwiękowej wszystko dalej gra z głośniczka PC, jak dawniej.
+
 ### Wiele programów naraz
 
 Każdy program parafialny ma teraz własne okno graficzne i działa niezależnie od pozostałych —
@@ -97,7 +115,8 @@ Jeśli karta graficzna nie obsługuje trybu graficznego, w menu startowym GRUB-a
 | `ogloszenia`, `ogloszenia dodaj …` | ogłoszenia parafialne (`usun N`, `lista`, `czysc`) |
 | `spowiedz` | **wirtualny spowiednik**: wierny pisze, komputer prowadzi spowiedź, daje naukę i pokutę dobraną do grzechów i wypowiada formułę rozgrzeszenia; potem wszystko jest wymazywane z pamięci |
 | `komunia` | **Komunia święta**: Hostia w promieniach, „Oto Baranek Boży”, dzwonki, „Ciało Chrystusa”, dziękczynienie z muzyką |
-| `muzyka`, `muzyka N`, `muzyka wszystko` | **muzyka mszalna** z głośniczka komputera (8 utworów: wejście, Adwent, Boże Narodzenie, Wielki Post, Komunia, dziękczynienie) |
+| `muzyka`, `muzyka N`, `muzyka wszystko` | **muzyka mszalna** (8 utworów: wejście, Adwent, Boże Narodzenie, Wielki Post, Komunia, dziękczynienie) - na organach przez kartę dźwiękową albo z głośniczka |
+| `dzwiek`, `dzwiek dzwon N`, `dzwiek amen`, `dzwiek organy`, `dzwiek glosnosc 0-100` | karta dźwiękowa: informacja i próby dźwięku |
 | `www [adres]` | **przeglądarka tekstowa** w terminalu: linki, historia, wyszukiwanie; strony HTTPS przez FrogFind (graficzna: ikona „Internet” na pulpicie) |
 | `usb` | kontrolery USB i podłączone klawiatury, myszy, koncentratory |
 | `siec`, `ping ADRES`, `siec dns A.B.C.D` | stan sieci (adres z DHCP), test połączenia, własny serwer DNS |
@@ -136,9 +155,11 @@ w niedzielę) i przenoszenie uroczystości (np. Zwiastowanie po oktawie Wielkano
   parafii na stałe można wpisać w `src/powloka.c` i przebudować system.
 - Treść spowiedzi nie trafia do historii poleceń
   i jest zerowana w pamięci po zakończeniu lub po naciśnięciu F10.
-- Muzyka gra przez wbudowany głośniczek PC (tzw. PC speaker) — jednym głosem, prostym
-  dźwiękiem. Wiele nowych komputerów nie ma już głośniczka na płycie głównej;
-  w QEMU: `-audiodev pa,id=s -machine pcspk-audiodev=s`.
+- Dźwięk działa z kartami **Intel High Definition Audio** (prawie każdy komputer od ok. 2005 r.,
+  QEMU `-device intel-hda`) i **AC'97** (starsze komputery, VirtualBox, QEMU `-device AC97`).
+  Karty USB, HDMI-only, Sound Blaster i kodeki wymagające specjalnej konfiguracji
+  (niektóre laptopy) nie są obsługiwane - wtedy gra głośniczek PC. Polecenie `dzwiek`
+  pokazuje wykrytą kartę; w menu GRUB-a jest też start „bez karty dźwiękowej”.
 - Melodie to głos sopranowy utworów z domeny publicznej (Bach, Gruber, Crüger),
   wygenerowane z korpusu music21 skryptem `tools/gen_muzyka.py`.
 - Sieć działa z kartą **Intel PRO/1000 (e1000, rodzina 8254x)** — domyślną w QEMU
@@ -189,6 +210,8 @@ src/obrazy.c        dekodery obrazków: inflate+PNG, GIF (LZW), JPEG baseline (I
 src/www.h           wspólne pobieranie HTTP i narzędzia obu przeglądarek
 src/rtc.c           zegar CMOS
 src/dzwiek.c        czasomierz PIT i głośniczek PC
+src/audio.c         karty dźwiękowe Intel HD Audio i AC'97 (DMA w pierścieniu, bez przerwań)
+src/synteza.c       syntezator: organy, dzwony, dzwonki, szum, pogłos (tablice z tools/gen_audio.py)
 src/muzyka_dane.h   nuty utworów (wygenerowane przez tools/gen_muzyka.py)
 src/e1000.c         sterownik karty sieciowej Intel PRO/1000 (PCI)
 src/siec.c          stos sieciowy: ARP, IPv4, ICMP, UDP, DHCP, DNS, TCP

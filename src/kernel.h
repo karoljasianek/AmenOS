@@ -2,7 +2,7 @@
 #ifndef AMENOS_KERNEL_H
 #define AMENOS_KERNEL_H
 
-#define AMENOS_WERSJA "2.0"
+#define AMENOS_WERSJA "2.1"
 
 typedef unsigned char  u8;
 typedef unsigned short u16;
@@ -196,6 +196,30 @@ const u32 *fb_ikona_nr(int nr);
 int  fb_sinus(int i);                   /* i = 0..59, wynik * 1000 */
 void fb_wyslij(int x, int y, int w, int h);
 
+/* ---------- prawdziwy dźwięk: karta dźwiękowa (audio.c) i syntezator (synteza.c) ---------- */
+extern int audio_jest;                    /* 1 = jest karta dźwiękowa (Intel HD Audio albo AC'97) */
+extern char audio_opis[80];
+extern int audio_krok;
+int  audio_init(void);
+void audio_pompuj(void);                  /* dolewa próbki do bufora karty - wołane bardzo często */
+void audio_glosnosc(int proc);            /* 0..100 */
+int  audio_glosnosc_pobierz(void);
+enum { INS_ORGANY, INS_FLET, INS_PIK, INS_DZWONEK, INS_KLIK };
+enum { E_POWIADOM, E_WIADOMOSC, E_KLIK, E_PACIOREK, E_START, E_AMEN, E_AKORD, E_NISZCZARKA };
+u16  dzw_nuta(int ins, u32 mhz, u32 ms, int glos);   /* ms = 0: trzymaj do dzw_pusc */
+void dzw_pusc(u16 id);
+void dzw_pozniej(u32 za_ms, int ins, u32 mhz, u32 ms, int glos);
+void dzw_dzwon(u32 mhz, int glos);
+void dzw_bij(int n, u32 mhz, u32 odstep);
+u32  dzw_dzwonki(int serie);
+void dzw_szum(u32 ms, int glos);
+void dzw_efekt(int e);
+u32  dzw_mhz(int nuta);                     /* częstotliwość nuty MIDI w milihercach */
+void synteza_generuj(short *out, int ramek);
+void synteza_glosnosc(int g);
+int  synteza_glosnosc_pobierz(void);
+void synteza_cisza(void);
+
 /* ---------- dane parafii (powloka.c) - wspólne dla terminala i okien ---------- */
 extern char parafia[64];
 #define PIESNI_N 6
@@ -259,6 +283,10 @@ int  gui_terminal_aktywny(void);
 
 /* ---------- muzyka (wspólne) ---------- */
 typedef struct { const char *tytul, *czesc, *opis; const u8 *nuty; const u16 *czasy; int n; } utwor_t;
+void dzw_utwor(const utwor_t *u);
+void dzw_utwor_stop(void);
+int  dzw_utwor_gra(void);
+u32  dzw_utwor_ms(void);
 
 /* ---------- powłoka (powloka.c) ---------- */
 void powloka(u32 mem_kb);
