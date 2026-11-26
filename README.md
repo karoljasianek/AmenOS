@@ -18,6 +18,8 @@ AmenOS to zwykłe, lekkie Lubuntu z polskim językiem, własnym wyglądem i zest
 | **Programy parafii** | 10 aplikacji w menu **Parafia**, „Dziś w parafii” startuje po zalogowaniu |
 | **Dźwięk, HDMI, Wi-Fi, drukarki** | wszystko, co obsługuje Ubuntu - PipeWire, CUPS, NetworkManager |
 
+![Pulpit AmenOS](zrzuty/pulpit.png)
+
 ## Programy parafialne
 
 Wszystkie programy to aplikacje HTML/JavaScript uruchamiane przez `amenos-app` (PyQt6 + Qt WebEngine). Działają w jednym procesie, więc można mieć otwartych kilka naraz, a zmiany (np. numery pieśni) od razu pojawiają się we wszystkich oknach - także na rzutniku.
@@ -66,7 +68,7 @@ qemu-system-x86_64 -enable-kvm -m 4G -bios /usr/share/ovmf/OVMF.fd -cdrom dystry
 
 Po uruchomieniu płyty pojawia się ekran powitalny z wyborem **Wypróbuj AmenOS** albo **Zainstaluj AmenOS**. Sesja na żywo loguje się automatycznie jako użytkownik `parafia`; instalator można też uruchomić później ikoną na pulpicie.
 
-<p><img src="zrzuty/start.png" width="49%"> <img src="zrzuty/powitanie.png" width="49%"></p>
+<p><img src="zrzuty/start.png" width="32%"> <img src="zrzuty/powitanie.png" width="32%"> <img src="zrzuty/instalator.png" width="32%"></p>
 
 ## Uruchomienie programów bez instalowania systemu
 
