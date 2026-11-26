@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Witaj w AmenOS</title>
+<link rel="stylesheet" href="../wspolne/amenos.css">
+<script src="../wspolne/dane.js"></script>
+<script src="../wspolne/liturgia.js"></script>
+<script src="../wspolne/amenos.js"></script>
+<style>
+  body { height: 100vh; overflow: hidden; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+         background: radial-gradient(ellipse at 50% 30%, #2B377A 0%, #1A2156 40%, #0B0F27 100%); }
+  .krzyz { position: relative; width: 120px; height: 160px; margin-bottom: 26px; }
+  .krzyz::before { content: ""; position: absolute; inset: -70px; border-radius: 50%; background: radial-gradient(circle, rgba(246,198,64,.35), transparent 62%); animation: oddech 4s ease-in-out infinite; }
+  .krzyz i { position: absolute; background: #F6C640; border-radius: 8px; }
+  .krzyz i:nth-child(1) { left: 48px; top: 0; width: 24px; height: 160px; }
+  .krzyz i:nth-child(2) { left: 6px; top: 46px; width: 108px; height: 24px; }
+  @keyframes oddech { 50% { transform: scale(1.1); opacity: .75; } }
+  h1 { font-size: 64px; font-weight: 300; letter-spacing: -0.01em; }
+  .pod { color: #AEB8E0; font-size: 20px; margin-top: 6px; }
+  .dzien { margin-top: 22px; font-size: 16px; color: #DCE2F6; display: flex; align-items: center; gap: 10px; }
+  .dzien .kropka { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
+  .wybor { display: flex; gap: 34px; margin-top: 54px; }
+  .opcja { width: 330px; padding: 26px 26px 22px; border-radius: 22px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.07);
+           color: #fff; text-align: left; cursor: pointer; font: inherit; transition: transform .12s, background .12s, border-color .12s; }
+  .opcja:hover, .opcja:focus { background: rgba(255,255,255,.14); border-color: #F6C640; transform: translateY(-3px); outline: none; }
+  .opcja b { display: block; font-size: 24px; font-weight: 650; margin: 12px 0 8px; }
+  .opcja span { color: #C3CBEA; font-size: 15px; line-height: 1.45; }
+  .opcja .ik { font-size: 34px; }
+  .opcja.glowna { background: #F6C640; color: #1A2156; border-color: #F6C640; }
+  .opcja.glowna span { color: #3B3A55; }
+  .opcja.glowna:hover, .opcja.glowna:focus { background: #FFD45E; }
+  .stopka { position: fixed; bottom: 22px; color: #7D88B6; font-size: 13.5px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="krzyz"><i></i><i></i></div>
+<h1>Witaj w AmenOS</h1>
+<div class="pod">system operacyjny dla parafii · na bazie Lubuntu 26.04 LTS</div>
+<div class="dzien"><span class="kropka" id="kropka"></span><span id="dzien"></span></div>
+<div class="wybor">
+  <button class="opcja" id="wyprobuj"><div class="ik">☩</div><b>Wypróbuj AmenOS</b><span>Uruchom system z płyty lub pendrive'a. Na dysku komputera nic się nie zmieni.</span></button>
+  <button class="opcja glowna" id="zainstaluj"><div class="ik">⤓</div><b>Zainstaluj AmenOS</b><span>Kreator przeprowadzi Cię przez instalację - krócej niż homilia, obiecujemy.</span></button>
+</div>
+<div class="stopka">Instalator można też uruchomić później ikoną „Zainstaluj AmenOS” · Enter - wypróbuj</div>
+<script>
+"use strict";
+const l = Amen.ustawAkcent();
+document.getElementById("dzien").textContent = `${(t => Amen.dataSlownie(t.r, t.m, t.d))(Amen.teraz())} · ${l.nazwa}`;
+document.getElementById("kropka").style.background = getComputedStyle(document.documentElement).getPropertyValue("--kolor-lit");
+const wyjdz = kod => { location.href = "amenos://wyjscie/" + kod; };
+document.getElementById("wyprobuj").onclick = () => wyjdz(1);
+document.getElementById("zainstaluj").onclick = () => wyjdz(2);
+document.getElementById("wyprobuj").focus();
+</script>
+</body>
+</html>

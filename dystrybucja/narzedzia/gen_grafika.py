@@ -214,8 +214,7 @@ kr.save(os.path.join(WYGLAD, "plymouth", "kropka.png"))
 
 g = thd.convert("RGBA")
 g = Image.alpha_composite(g, Image.new("RGBA", g.size, (5, 8, 26, 110)))
-lg = logo.resize((360, 210), Image.LANCZOS)
-g.alpha_composite(lg, (960 - 180, 120))
+# bez logo na środku - menu GRUB zajmuje całą szerokość ekranu; krzyż z tapety zostaje po prawej
 g.convert("RGB").save(os.path.join(WYGLAD, "grub-tlo.png"))
 
 CAL = os.path.join(WYGLAD, "calamares")

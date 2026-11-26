@@ -2,9 +2,7 @@
 componentName:  amenos
 welcomeStyleCalamares: false
 welcomeExpandingLogo: true
-windowExpanding: normal
-windowSize: 1024px,640px
-windowPlacement: center
+windowExpanding: fullscreen
 sidebar: widget
 navigation: widget
 
@@ -15,7 +13,7 @@ strings:
     shortVersion:        "@WERSJA@"
     versionedName:       "AmenOS @WERSJA@"
     shortVersionedName:  "AmenOS @WERSJA@"
-    bootloaderEntryName: "AmenOS"
+    bootloaderEntryName: "Ubuntu"   # musi zostać: podpisany GRUB (Secure Boot) szuka /EFI/ubuntu
     productUrl:          "https://github.com/karoljasianek/AmenOS"
     supportUrl:          "https://github.com/karoljasianek/AmenOS/issues"
     knownIssuesUrl:      "https://github.com/karoljasianek/AmenOS/issues"

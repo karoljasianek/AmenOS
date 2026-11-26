@@ -10,13 +10,30 @@ Użycie: amenos-app [program]      np. amenos-app piesni
 """
 import os, sys, mimetypes
 
-from PyQt6.QtCore import QUrl, QBuffer, QIODevice, QByteArray, Qt
-from PyQt6.QtGui import QIcon
+# Programy wyświetlają wyłącznie własne, lokalne strony (amenos://), a obce adresy otwierają się
+# w zwykłej przeglądarce - dlatego piaskownica Chromium nie jest potrzebna. Na Ubuntu 24.04+
+# AppArmor blokuje przestrzenie nazw użytkownika dla python3, więc z piaskownicą silnik by nie ruszył.
+os.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")
+
+# Bez sprzętowej karty graficznej (maszyna wirtualna, stary komputer, nomodeset) Chromium rysowałby
+# przez programowy OpenGL (llvmpipe) - to potrafi trwać minutami. Wtedy rysujemy całkowicie programowo.
+# AMENOS_GPU=1 wymusza kartę graficzną, AMENOS_GPU=0 - rysowanie programowe.
+import glob
+_gpu = os.environ.get("AMENOS_GPU")
+if _gpu == "0" or (_gpu != "1" and not glob.glob("/dev/dri/renderD*")):
+    os.environ.setdefault("QT_QUICK_BACKEND", "software")
+    flagi = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
+    if "--disable-gpu" not in flagi:
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (flagi + " --disable-gpu").strip()
+
+from PyQt6.QtCore import QUrl, QBuffer, QIODevice, QByteArray, Qt, QTimer
+from PyQt6.QtGui import QIcon, QDesktopServices
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import QApplication, QMainWindow
 from PyQt6.QtWebEngineCore import (QWebEngineProfile, QWebEnginePage, QWebEngineSettings,
                                    QWebEngineUrlScheme, QWebEngineUrlSchemeHandler, QWebEngineUrlRequestJob)
 from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6 import sip
 
 TU = os.path.dirname(os.path.abspath(__file__))
 KATALOG = os.environ.get("AMENOS_APLIKACJE") or next(
@@ -32,6 +49,7 @@ PROGRAMY = {   # nazwa: (tytuł, szerokość, wysokość)
     "msze":        ("Porządek Mszy", 640, 700),
     "kalkulator":  ("Kalkulator biblijny", 420, 760),
     "muzyka":      ("Muzyka mszalna", 640, 640),
+    "powitanie":   ("Witaj w AmenOS", 1280, 800),   # ekran startowy płyty (sesja na żywo)
 }
 GNIAZDO = f"amenos-app-{os.getuid()}"
 
@@ -70,6 +88,17 @@ class Strona(QWebEnginePage):
         self.okno = okno
         self.fullScreenRequested.connect(self.pelny_ekran)
 
+    def acceptNavigationRequest(self, url, typ, glowna):
+        if url.scheme() == "amenos" and url.host() == "wyjscie":   # amenos://wyjscie/<kod> - koniec programu z kodem
+            kod = url.path().strip("/")
+            # os._exit: bez sprzątania Qt WebEngine (zamykanie profilu z żywą stroną kończy się segfaultem)
+            QTimer.singleShot(0, lambda: (sys.stdout.flush(), os._exit(int(kod) if kod.isdigit() else 0)))
+            return False
+        if url.scheme() not in ("amenos", "about", "data", "blob"):    # strona z internetu -> zwykła przeglądarka
+            QDesktopServices.openUrl(url)
+            return False
+        return super().acceptNavigationRequest(url, typ, glowna)
+
     def createWindow(self, typ):                       # window.open() -> nowe okno AmenOS
         return Okno(self.okno.app_ref).strona
 
@@ -94,6 +123,7 @@ class Okno(QMainWindow):
         self.setCentralWidget(self.widok)
         self.strona.titleChanged.connect(lambda t: self.setWindowTitle(t or "AmenOS"))
         self.strona.urlChanged.connect(self.zmiana_adresu)
+        self.strona.windowCloseRequested.connect(self.close)          # window.close() z programu
         app_ref.okna.append(self)
         self.destroyed.connect(lambda *_: app_ref.okna.remove(self) if self in app_ref.okna else None)
         self.resize(900, 700)
@@ -110,6 +140,8 @@ class Okno(QMainWindow):
             if os.path.isfile(ikona): self.setWindowIcon(QIcon(ikona))
             self.setWindowTitle(tytul)
             self.resize(w, h)
+            if p == "powitanie":
+                self.setGeometry(self.screen().geometry()); self.showFullScreen()
         # pokaz na rzutniku / drugim monitorze: ...?ekran=2
         if "ekran=2" in url.query():
             ekrany = QApplication.screens()
@@ -142,6 +174,16 @@ class Amen:
         QLocalServer.removeServer(GNIAZDO)
         self.serwer.listen(GNIAZDO)
 
+    def sprzataj(self):
+        """Strony muszą zniknąć przed profilem - inaczej Qt WebEngine kończy się segfaultem przy wyjściu."""
+        for o in list(self.okna):
+            if not sip.isdeleted(o):
+                o.widok.setPage(None)
+                if not sip.isdeleted(o.strona): sip.delete(o.strona)
+        self.okna.clear()
+        QApplication.processEvents()
+        if not sip.isdeleted(self.profil): sip.delete(self.profil)
+
     def polaczenie(self):
         s = self.serwer.nextPendingConnection()
         s.waitForReadyRead(1000)
@@ -160,12 +202,14 @@ def main():
     program = sys.argv[1] if len(sys.argv) > 1 else "dzis"
     s = QLocalSocket()
     s.connectToServer(GNIAZDO)
-    if s.waitForConnected(300):                          # AmenOS już działa - poproś o nowe okno
+    if program != "powitanie" and s.waitForConnected(300):                          # AmenOS już działa - poproś o nowe okno
         s.write(program.encode()); s.flush(); s.waitForBytesWritten(1000)
         return 0
     a = Amen()
     a.otworz(program)
-    return a.app.exec()
+    kod = a.app.exec()
+    a.sprzataj()
+    return kod
 
 
 if __name__ == "__main__":

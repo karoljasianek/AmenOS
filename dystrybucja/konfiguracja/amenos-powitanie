@@ -1,0 +1,8 @@
+#!/bin/sh
+# AmenOS: ekran powitalny sesji na żywo (zastępuje lubuntu-installer-prompt).
+# amenos-app powitanie kończy się kodem 1 = „Wypróbuj”, 2 = „Zainstaluj”.
+amenos-app powitanie
+if [ $? -eq 2 ]; then
+  sudo -E /usr/bin/calamares-launch-normal
+fi
+exit 0

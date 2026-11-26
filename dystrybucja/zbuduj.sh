@@ -96,20 +96,29 @@ EOF
   dpkg-deb --root-owner-group -b "$p" "$B/deb/amenos-parafia_${WERSJA}_all.deb" >/dev/null
 }
 
-ustaw_klucz() {  # plik sekcja klucz wartość (proste .ini)
+ustaw_klucz() {  # plik sekcja klucz wartość - zmienia jedną linię, resztę pliku zostawia w spokoju
   python3 - "$@" <<'EOF'
-import sys, configparser
+import sys
 p, s, k, v = sys.argv[1:5]
-c = configparser.RawConfigParser(); c.optionxform = str
-c.read(p, encoding="utf-8")
-if not c.has_section(s): c.add_section(s)
-c.set(s, k, v)
-with open(p, "w", encoding="utf-8") as f: c.write(f, space_around_delimiters=False)
+linie = open(p, encoding="utf-8").read().splitlines()
+start = next((i for i, l in enumerate(linie) if l.strip() == f"[{s}]"), None)
+if start is None:
+    linie += ["", f"[{s}]", f"{k}={v}"]
+else:
+    koniec = next((i for i in range(start + 1, len(linie)) if linie[i].startswith("[")), len(linie))
+    for i in range(start + 1, koniec):
+        if linie[i].split("=", 1)[0].strip() == k:
+            linie[i] = f"{k}={v}"
+            break
+    else:
+        linie.insert(start + 1, f"{k}={v}")
+open(p, "w", encoding="utf-8").write("\n".join(linie) + "\n")
 EOF
 }
 
 etap_konfiguruj() {
   zamontuj
+  printf '#!/bin/sh\nexit 101\n' > "$C/usr/sbin/policy-rc.d"; chmod +x "$C/usr/sbin/policy-rc.d"
   log "Pakiet amenos-parafia"
   zbuduj_deb
   cp "$B/deb/amenos-parafia_${WERSJA}_all.deb" "$C/tmp/"
@@ -150,6 +159,7 @@ EOF
   # pcmanfm-qt: wszystkie systemowe ustawienia pulpitu (Lubuntu trzyma je w xdg-Lubuntu)
   find "$C/etc/xdg" "$C/usr/share" -path '*pcmanfm-qt/lxqt/settings.conf' 2>/dev/null | while read -r f; do
     ustaw_klucz "$f" Desktop Wallpaper "$T"; ustaw_klucz "$f" Desktop WallpaperMode zoom
+    ustaw_klucz "$f" Desktop DesktopShortcuts "Home, Trash, Computer, Network"
   done
   # SDDM: tło motywu Lubuntu (theme.conf.user ma pierwszeństwo przed theme.conf)
   for t in "$C"/usr/share/sddm/themes/*/; do
@@ -157,6 +167,7 @@ EOF
   done
   # LXQt: szybkie uruchamianie programów parafii na panelu
   find "$C/etc/xdg" -path '*lxqt/panel.conf' 2>/dev/null | while read -r f; do
+    grep -q '^\[fancymenu\]' "$f" && { ustaw_klucz "$f" fancymenu ownIcon true; ustaw_klucz "$f" fancymenu icon /usr/share/icons/hicolor/256x256/apps/amenos.png; }
     python3 - "$f" <<'EOF'
 import sys, re
 p = sys.argv[1]; s = open(p, encoding="utf-8").read()
@@ -166,7 +177,7 @@ if not m: sys.exit()
 blok = m.group(1)
 n = len(re.findall(r"^apps\\\d+\\desktop=", blok, re.M))
 nowe = "".join(f"apps\\{n+i+1}\\desktop=/usr/share/applications/amenos-{a}.desktop\n" for i, a in enumerate(["dzis", "piesni", "kalendarz", "modlitewnik"]))
-blok2 = re.sub(r"^apps\\size=\d+", f"apps\\size={n+4}", blok, flags=re.M)
+blok2 = re.sub(r"^apps\\size=\d+", lambda _: f"apps\\size={n+4}", blok, flags=re.M)
 if "apps\\size=" not in blok2: blok2 = f"apps\\size={n+4}\n" + blok2
 s = s[:m.start(1)] + blok2.rstrip("\n") + "\n" + nowe + "\n" + s[m.end(1):]
 open(p, "w", encoding="utf-8").write(s)
@@ -179,6 +190,12 @@ EOF
   w_chroot update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth /usr/share/plymouth/themes/amenos/amenos.plymouth 200
   w_chroot update-alternatives --set default.plymouth /usr/share/plymouth/themes/amenos/amenos.plymouth
 
+  log "Ekran powitalny sesji na żywo"
+  if [ -e "$C/usr/bin/lubuntu-installer-prompt" ] && ! chroot "$C" dpkg-divert --list /usr/bin/lubuntu-installer-prompt | grep -q .; then
+    chroot "$C" dpkg-divert --local --rename --divert /usr/bin/lubuntu-installer-prompt.lubuntu --add /usr/bin/lubuntu-installer-prompt >/dev/null
+  fi
+  [ -e "$C/usr/bin/lubuntu-installer-prompt.lubuntu" ] && install -m755 "$D/konfiguracja/amenos-powitanie" "$C/usr/bin/lubuntu-installer-prompt"
+
   log "Instalator Calamares"
   if [ -d "$C/etc/calamares" ]; then
     K="$C/etc/calamares/branding/amenos"; rm -rf "$K"; mkdir -p "$K"
@@ -187,6 +204,8 @@ EOF
     cp "$D"/wyglad/calamares/*.png "$K/"
     sed "s/@WERSJA@/$WERSJA/g" "$D/calamares/branding.desc" > "$K/branding.desc"
     sed -i 's/^branding:.*/branding: amenos/' "$C/etc/calamares/settings.conf"
+    W="$C/etc/calamares/modules/welcome.conf"
+    [ -f "$W" ] && sed -i -e 's|^showDonateUrl:.*|showDonateUrl: false|' -e 's|^\( *internetCheckUrl:\).*|\1 http://connectivity-check.ubuntu.com|' "$W"
     [ -f "$C/etc/calamares/modules/locale.conf" ] && sed -i -e 's/^\( *region:\).*/\1 "Europe"/' -e 's/^\( *zone:\).*/\1 "Warsaw"/' "$C/etc/calamares/modules/locale.conf"
     for f in "$C"/usr/share/applications/*calamares*.desktop "$C"/usr/share/applications/lubuntu-*install*.desktop; do
       [ -f "$f" ] && sed -i -e 's/^Name\(\[[a-zA-Z_]*\]\)\?=.*/Name\1=Zainstaluj AmenOS/' -e 's/^Icon=.*/Icon=amenos/' "$f"
@@ -216,7 +235,7 @@ etap_iso() {
   grep -E '^(casper|calamares|calamares-settings-lubuntu|cifs-utils) ' "$ISO_DIR/casper/filesystem.manifest" | cut -d' ' -f1 > "$ISO_DIR/casper/filesystem.manifest-remove" || true
   du -sx --block-size=1 "$C" | cut -f1 > "$ISO_DIR/casper/filesystem.size"
   log "squashfs (zstd) - to potrwa"
-  mksquashfs "$C" "$ISO_DIR/casper/filesystem.squashfs" -noappend -comp zstd -Xcompression-level 19 -b 1M \
+  mksquashfs "$C" "$ISO_DIR/casper/filesystem.squashfs" -noappend -comp zstd -Xcompression-level "${ZSTD:-19}" -b 1M \
     -e "$C/.amenos-baza" -e "$C/.amenos-pakiety" -wildcards -e 'proc/*' -e 'sys/*' -e 'dev/*' -e 'run/*' -e 'tmp/*' -e 'boot/*.bak'
   echo "AmenOS $WERSJA \"Resolute Raccoon\" - Release amd64 ($(date +%Y%m%d))" > "$ISO_DIR/.disk/info"
   touch "$ISO_DIR/.disk/base_installable"; echo "full_cd/single" > "$ISO_DIR/.disk/cd_type"
