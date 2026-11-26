@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Komunia święta
+Comment=Komunia duchowa z dzwonkami i muzyką
+Exec=amenos-app komunia
+Icon=amenos-komunia
+Terminal=false
+Categories=X-AmenOS-Parafia;Education;
+StartupWMClass=amenos-app

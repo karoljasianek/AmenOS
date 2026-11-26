@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Spowiedź
+Comment=Rachunek sumienia w formie rozmowy - nic nie jest zapisywane
+Exec=amenos-app spowiedz
+Icon=amenos-spowiedz
+Terminal=false
+Categories=X-AmenOS-Parafia;Education;
+StartupWMClass=amenos-app

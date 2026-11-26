@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Kalkulator biblijny
+Comment=Kalkulator, który zna liczby z Pisma Świętego
+Exec=amenos-app kalkulator
+Icon=amenos-kalkulator
+Terminal=false
+Categories=X-AmenOS-Parafia;Calculator;
+StartupWMClass=amenos-app

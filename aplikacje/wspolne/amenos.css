@@ -1,0 +1,81 @@
+/* AmenOS - wspólny wygląd programów parafialnych */
+:root {
+  --akcent: #23874B;
+  --akcent-tlo: #E9F3ED; --akcent-jasny: #D3E7DB; --akcent-mgla: #C8E1D2; --akcent-ciemny: #1E7441; --akcent-noc: #1F4E48; --akcent-tekst: #185F35;
+  --kolor-lit: #2F9E5B;
+  --tlo: #F4F5F8;
+  --karta: #FFFFFF;
+  --tekst: #1B1F2A;
+  --szary: #6B7280;
+  --linia: #E3E6EC;
+  --zloto: #B8901C;
+  --czerwony: #D6333F;
+  --promien: 14px;
+  --cien: 0 1px 2px rgba(16, 24, 40, .06), 0 6px 18px rgba(16, 24, 40, .07);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: Inter, "Noto Sans", "DejaVu Sans", sans-serif;
+  font-size: 15px; line-height: 1.45; color: var(--tekst); background: var(--tlo);
+  -webkit-font-smoothing: antialiased; user-select: none;
+}
+input, textarea, button, select { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+h1 { font-size: 26px; } h2 { font-size: 19px; } h3 { font-size: 16px; }
+.szary { color: var(--szary); }
+.maly { font-size: 13px; }
+
+/* nagłówek programu */
+.naglowek { display: flex; align-items: center; gap: 14px; padding: 18px 24px 12px; }
+.naglowek img { width: 44px; height: 44px; }
+.naglowek .podtytul { color: var(--szary); font-size: 14px; }
+.naglowek .reszta { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+.tresc { padding: 8px 24px 24px; }
+.karta { background: var(--karta); border-radius: var(--promien); box-shadow: var(--cien); padding: 18px 20px; }
+.siatka { display: grid; gap: 16px; }
+
+/* przyciski */
+.przycisk {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 16px; border-radius: 10px; border: 1px solid rgba(0, 0, 0, .12);
+  background: #fff; cursor: pointer; font-weight: 600; transition: transform .08s, background .15s, box-shadow .15s;
+}
+.przycisk:hover { background: #F6F7F9; }
+.przycisk:active { transform: scale(.97); }
+.przycisk.glowny { background: var(--akcent); border-color: transparent; color: #fff; }
+.przycisk.glowny:hover { filter: brightness(1.06); }
+.przycisk.czerwony { background: var(--czerwony); border-color: transparent; color: #fff; }
+.przycisk.duzy { padding: 13px 22px; font-size: 17px; border-radius: 12px; }
+.przycisk:disabled { opacity: .45; cursor: default; transform: none; }
+
+.pole {
+  width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(0, 0, 0, .18);
+  background: #fff; outline: none; user-select: text;
+}
+.pole:focus { border-color: var(--akcent); box-shadow: 0 0 0 3px var(--akcent-mgla); }
+
+.kropka { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex: none;
+          box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15); }
+.znaczek { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+           background: var(--akcent-tlo); color: var(--akcent-tekst);
+           font-size: 13px; font-weight: 600; }
+
+/* komunikat w rogu */
+.dymek-info {
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0;
+  background: #1E2433; color: #fff; padding: 10px 18px; border-radius: 12px; box-shadow: var(--cien);
+  transition: opacity .2s, transform .2s; z-index: 1000; max-width: 80%; text-align: center;
+}
+.dymek-info.widac { opacity: 1; transform: translate(-50%, 0); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #C9CED6; border-radius: 6px; border: 2px solid var(--tlo); }
+::-webkit-scrollbar-track { background: transparent; }
+
+@media print {
+  body { background: #fff; }
+  .nie-drukuj { display: none !important; }
+}

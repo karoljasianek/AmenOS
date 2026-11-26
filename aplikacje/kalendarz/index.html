@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Kalendarz liturgiczny</title>
+<link rel="stylesheet" href="../wspolne/amenos.css">
+<script src="../wspolne/dane.js"></script>
+<script src="../wspolne/liturgia.js"></script>
+<script src="../wspolne/amenos.js"></script>
+<style>
+  body { display: flex; flex-direction: column; }
+  .uklad { display: grid; grid-template-columns: 1fr 340px; gap: 18px; padding: 0 24px 24px; flex: 1; min-height: 0; }
+  .miesiac-nag { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .miesiac-nag h2 { font-size: 24px; min-width: 230px; }
+  .okr { width: 38px; height: 38px; border-radius: 50%; border: 0; background: #EEF0F4; cursor: pointer; font-size: 18px; }
+  .okr:hover { background: #E2E5EB; }
+  .siatka7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .dn { text-align: center; font-size: 12px; font-weight: 600; color: var(--szary); padding-bottom: 4px; }
+  .dn.nd { color: #B42A32; }
+  .dzien { background: #fff; border-radius: 12px; padding: 8px 9px 7px; min-height: 86px; cursor: pointer; position: relative;
+           box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06); display: flex; flex-direction: column; gap: 4px; transition: box-shadow .1s; }
+  .dzien:hover { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18); }
+  .dzien .nr { font-weight: 650; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .dzien .nr .kropka { width: 11px; height: 11px; }
+  .dzien .nz { font-size: 11px; line-height: 1.25; color: #4B5160; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+  .dzien.uroczyste .nr { color: #B42A32; }
+  .dzien.uroczyste .nz { font-weight: 600; color: #2A2F3C; }
+  .dzien.dzis { box-shadow: inset 0 0 0 2px var(--akcent); }
+  .dzien.dzis .nr span:first-child { background: var(--akcent); color: #fff; border-radius: 8px; padding: 0 7px; }
+  .dzien.wybrany { background: var(--akcent-tlo); box-shadow: inset 0 0 0 2px #2B3550; }
+  .pusty { visibility: hidden; }
+  .pasek { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; border-radius: 0 0 12px 12px; }
+  .szczegoly { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+  .duza-data { font-size: 15px; color: var(--szary); }
+  .nazwa-dnia { font-size: 21px; font-weight: 650; line-height: 1.3; }
+  .szata { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; font-weight: 600; }
+  .lista .wiersz { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--linia); font-size: 13.5px; cursor: pointer; }
+  .lista .wiersz:hover { color: var(--akcent); }
+  .lista .wiersz b { min-width: 50px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="naglowek">
+  <img src="../wspolne/ikony/kalendarz.png" alt="">
+  <div><h1>Kalendarz liturgiczny</h1><div class="podtytul">Kościół rzymskokatolicki w Polsce</div></div>
+  <div class="reszta"><button class="przycisk" id="dzis">Dziś</button></div>
+</div>
+<div class="uklad">
+  <div>
+    <div class="miesiac-nag">
+      <button class="okr" id="wstecz" title="Poprzedni miesiąc">‹</button>
+      <h2 id="tytul"></h2>
+      <button class="okr" id="dalej" title="Następny miesiąc">›</button>
+    </div>
+    <div class="siatka7" id="siatka"></div>
+  </div>
+  <div class="szczegoly">
+    <div class="karta" id="opis"></div>
+    <div class="karta">
+      <h3 style="margin-bottom:6px">Najbliższe uroczystości i święta</h3>
+      <div class="lista" id="lista"></div>
+    </div>
+  </div>
+</div>
+<script>
+"use strict";
+const t0 = Amen.teraz();
+let r = t0.r, m = t0.m, wyb = t0.d;
+Amen.ustawAkcent();
+const tekstKoloru = k => k === LIT.BIALY ? "#5A4A20" : "#fff";
+
+function rysuj() {
+  document.getElementById("tytul").textContent = `${LIT.MIES[m]} ${r}`;
+  const s = document.getElementById("siatka");
+  let h = LIT.DNI_W.slice(1).concat(LIT.DNI_W[0]).map((d, i) => `<div class="dn ${i === 6 ? "nd" : ""}">${d.slice(0, 3)}</div>`).join("");
+  const pierwszy = (LIT.dzienTygodnia(LIT.dniOdEpoki(r, m, 1)) + 6) % 7;
+  for (let i = 0; i < pierwszy; i++) h += '<div class="dzien pusty"></div>';
+  for (let d = 1; d <= LIT.dniWMiesiacu(r, m); d++) {
+    const l = LIT.liturgia(r, m, d), kl = ["dzien"];
+    if (l.ranga <= LIT.R_UROCZ || l.dzienTygodnia === 0) kl.push("uroczyste");
+    if (d === t0.d && m === t0.m && r === t0.r) kl.push("dzis");
+    if (d === wyb) kl.push("wybrany");
+    h += `<div class="${kl.join(" ")}" data-d="${d}"><div class="nr"><span>${d}</span><span class="kropka" style="background:${Amen.KOLOR_LIT[l.kolor]}"></span></div>
+          <div class="nz">${Amen.esc(l.nazwa)}</div><div class="pasek" style="background:${Amen.KOLOR_LIT[l.kolor]}"></div></div>`;
+  }
+  s.innerHTML = h;
+  s.querySelectorAll("[data-d]").forEach(e => e.onclick = () => { wyb = +e.dataset.d; rysuj(); });
+  opis();
+}
+
+function opis() {
+  const l = LIT.liturgia(r, m, wyb);
+  document.getElementById("opis").innerHTML = `
+    <div class="duza-data">${Amen.dataSlownie(r, m, wyb)}</div>
+    <div class="nazwa-dnia" style="margin:6px 0 10px">${Amen.esc(l.nazwa)}</div>
+    ${l.uwaga ? `<div class="szary maly" style="margin-bottom:10px">(${Amen.esc(l.uwaga)})</div>` : ""}
+    <div class="szata" style="background:${Amen.KOLOR_LIT[l.kolor]};color:${tekstKoloru(l.kolor)}">Kolor szat: ${l.kolorNazwa}</div>
+    <div style="margin-top:12px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px">
+      <span class="szary">Okres</span><span>${Amen.esc(l.okres)}</span>
+      <span class="szary">Rok liturgiczny</span><span>niedzielny ${l.cyklNiedz}, powszedni ${l.cyklPowsz === 1 ? "I" : "II"}</span>
+    </div>`;
+  const D = LIT.dniOdEpoki(r, m, wyb), w = [];
+  for (let z = D; z < D + 200 && w.length < 9; z++) {
+    const x = LIT.dataZDni(z), q = LIT.liturgia(x.r, x.m, x.d);
+    if (/^(Uroczystość|Święto) /.test(q.nazwa))
+      w.push(`<div class="wiersz" data-z="${z}"><b>${x.d}.${String(x.m).padStart(2, "0")}</b><span class="kropka" style="background:${Amen.KOLOR_LIT[q.kolor]};margin-top:3px"></span><span>${Amen.esc(q.nazwa)}</span></div>`);
+  }
+  const lista = document.getElementById("lista");
+  lista.innerHTML = w.join("");
+  lista.querySelectorAll("[data-z]").forEach(e => e.onclick = () => { const x = LIT.dataZDni(+e.dataset.z); r = x.r; m = x.m; wyb = x.d; rysuj(); });
+}
+
+function zmien(o) {
+  m += o;
+  if (m < 1) { m = 12; r--; }
+  if (m > 12) { m = 1; r++; }
+  wyb = Math.min(wyb, LIT.dniWMiesiacu(r, m));
+  rysuj();
+}
+document.getElementById("wstecz").onclick = () => zmien(-1);
+document.getElementById("dalej").onclick = () => zmien(1);
+document.getElementById("dzis").onclick = () => { r = t0.r; m = t0.m; wyb = t0.d; rysuj(); };
+addEventListener("keydown", e => {
+  if (e.key === "PageUp") zmien(-1);
+  else if (e.key === "PageDown") zmien(1);
+  else if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") {
+    const z = LIT.dniOdEpoki(r, m, wyb) + ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 })[e.key], x = LIT.dataZDni(z);
+    r = x.r; m = x.m; wyb = x.d; rysuj();
+  }
+});
+rysuj();
+</script>
+</body>
+</html>

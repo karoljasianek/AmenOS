@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Komunia święta</title>
+<link rel="stylesheet" href="../wspolne/amenos.css">
+<script src="../wspolne/dane.js"></script>
+<script src="../wspolne/liturgia.js"></script>
+<script src="../wspolne/amenos.js"></script>
+<script src="../wspolne/dzwiek.js"></script>
+<style>
+  body { background: radial-gradient(ellipse at 50% 28%, #2B377A 0%, #1A2156 38%, #0C1028 100%); color: #fff; height: 100vh; overflow: hidden;
+         display: flex; flex-direction: column; align-items: center; }
+  .scena { position: relative; width: 420px; height: 420px; margin-top: 10px; flex: none; }
+  .promienie { position: absolute; inset: 0; animation: obrot 120s linear infinite; }
+  .promienie i { position: absolute; left: 50%; top: 50%; width: 3px; height: 150px; margin-left: -1.5px; transform-origin: 50% 0;
+                 background: linear-gradient(#F6C640, rgba(246, 198, 64, 0)); border-radius: 2px; }
+  .promienie i.krotki { height: 118px; width: 2px; opacity: .8; }
+  @keyframes obrot { to { transform: rotate(360deg); } }
+  .blask { position: absolute; left: 50%; top: 42%; width: 330px; height: 330px; margin: -165px; border-radius: 50%;
+           background: radial-gradient(circle, rgba(246, 198, 64, .35), transparent 65%); animation: oddech 4s ease-in-out infinite; }
+  @keyframes oddech { 50% { transform: scale(1.08); opacity: .8; } }
+  .hostia { position: absolute; left: 50%; top: 42%; width: 128px; height: 128px; margin: -64px; border-radius: 50%;
+            background: radial-gradient(circle at 40% 35%, #FFFFFF, #F6EEDC); box-shadow: 0 0 0 8px #E2B13C, 0 0 0 10px #FFE08A, 0 0 40px rgba(246, 198, 64, .6); }
+  .hostia::before, .hostia::after { content: ""; position: absolute; background: #EDE2C8; border-radius: 2px; }
+  .hostia::before { left: 61px; top: 30px; width: 6px; height: 68px; }
+  .hostia::after { left: 40px; top: 52px; width: 48px; height: 6px; }
+  .stopa { position: absolute; left: 50%; top: calc(42% + 72px); width: 16px; height: 96px; margin-left: -8px; background: linear-gradient(#F6C640, #B8862A); border-radius: 6px; }
+  .stopa::before { content: ""; position: absolute; left: -6px; top: 34px; width: 28px; height: 22px; border-radius: 50%; background: #E2B13C; }
+  .podstawa { position: absolute; left: 50%; top: calc(42% + 160px); width: 150px; height: 20px; margin-left: -75px; background: #F0BE48; border-radius: 10px; box-shadow: 0 -10px 0 -2px #D9A63A; }
+  .gwiazdka { position: absolute; width: 14px; height: 14px; animation: migot 2.2s ease-in-out infinite; }
+  .gwiazdka::before, .gwiazdka::after { content: ""; position: absolute; background: #FFF4C8; border-radius: 1px; }
+  .gwiazdka::before { left: 6px; top: 0; width: 2px; height: 14px; } .gwiazdka::after { left: 0; top: 6px; width: 14px; height: 2px; }
+  @keyframes migot { 0%, 100% { opacity: .1; transform: scale(.6); } 50% { opacity: 1; transform: scale(1); } }
+  .tekst { text-align: center; max-width: 520px; padding: 0 24px; display: flex; flex-direction: column; align-items: center; gap: 16px; min-height: 220px; }
+  .kaplan { font-size: 21px; line-height: 1.5; color: #F6DE8E; font-weight: 550; }
+  .duzy { font-size: 32px; font-weight: 650; color: #F6DE8E; }
+  .odp { font-size: 16px; line-height: 1.55; color: #E8ECF8; }
+  .podpowiedz { font-size: 13px; color: #8C96C0; }
+  .przycisk { color: var(--tekst); }
+</style>
+</head>
+<body>
+<div class="scena" id="scena">
+  <div class="blask"></div><div class="promienie" id="promienie"></div>
+  <div class="stopa"></div><div class="podstawa"></div><div class="hostia"></div>
+</div>
+<div class="tekst" id="tekst"></div>
+<script>
+"use strict";
+const pr = document.getElementById("promienie");
+for (let i = 0; i < 36; i++) pr.insertAdjacentHTML("beforeend", `<i class="${i % 2 ? "krotki" : ""}" style="transform:rotate(${i * 10}deg) translateY(66px)"></i>`);
+const sc = document.getElementById("scena");
+[[40, 50], [370, 80], [70, 300], [350, 330], [20, 180], [395, 210], [210, 8]].forEach(([x, y], i) =>
+  sc.insertAdjacentHTML("beforeend", `<div class="gwiazdka" style="left:${x}px;top:${y}px;animation-delay:${i * 0.33}s"></div>`));
+const T = document.getElementById("tekst");
+const bach = AMEN_DANE.utwory.findIndex(u => /Schmücke/.test(u.tytul));
+let etap = 0, utwor = null;
+
+function rysuj() {
+  if (etap <= 1) T.innerHTML = `<div class="kaplan">Oto Baranek Boży, który gładzi grzechy świata. Błogosławieni, którzy zostali wezwani na Jego ucztę.</div>` +
+    (etap === 0 ? `<button class="przycisk duzy" id="dalej">Panie, nie jestem godzien…</button><div class="podpowiedz">kliknij albo naciśnij Enter</div>`
+                : `<div class="odp">Panie, nie jestem godzien, abyś przyszedł do mnie, ale powiedz tylko słowo, a będzie uzdrowiona dusza moja.</div>`);
+  else if (etap === 2) T.innerHTML = `<div class="duzy">Dzyń! Dzyń! Dzyń!</div><div class="podpowiedz">dzwonki ministranckie</div>`;
+  else if (etap <= 4) T.innerHTML = `<div class="duzy">Ciało Chrystusa.</div>` +
+    (etap === 3 ? `<button class="przycisk duzy" id="dalej">Amen</button><div class="podpowiedz">kliknij albo naciśnij Enter</div>` : `<div class="odp" style="font-size:20px">Amen.</div>`);
+  else T.innerHTML = `<div class="kaplan" style="font-size:18px">Dziękczynienie - akt komunii duchowej</div>
+    <div class="odp">Jezu mój, wierzę, że jesteś obecny w Najświętszym Sakramencie. Kocham Cię nade wszystko i pragnę Cię przyjąć do mojej duszy.
+    Przyjdź do mego serca. Obejmuję Cię i jednoczę się z Tobą. Nie dozwól, abym kiedykolwiek miał się od Ciebie odłączyć. Amen.</div>
+    <div style="color:#9AD7E6">♫ ${bach >= 0 ? Amen.esc(AMEN_DANE.utwory[bach].tytul + " - " + AMEN_DANE.utwory[bach].opis) : "muzyka organowa"}</div>
+    <button class="przycisk" id="dalej">Zakończ</button>`;
+  const d = document.getElementById("dalej");
+  if (d) d.onclick = dalej;
+}
+function dalej() {
+  if (etap === 0) {
+    etap = 1; rysuj();
+    setTimeout(() => { etap = 2; rysuj(); const ms = Dzwiek.dzwonki(3); setTimeout(() => { etap = 3; rysuj(); }, ms); }, 2200);
+  } else if (etap === 3) {
+    etap = 4; rysuj();
+    setTimeout(() => { etap = 5; rysuj(); if (bach >= 0) utwor = Dzwiek.utwor(AMEN_DANE.utwory[bach]); }, 1400);
+  } else if (etap === 5) { if (utwor) utwor.zatrzymaj(); window.close(); }
+}
+addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); dalej(); } });
+rysuj();
+</script>
+</body>
+</html>

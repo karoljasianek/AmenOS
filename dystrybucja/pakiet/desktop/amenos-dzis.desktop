@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Dziś w parafii
+Comment=Pulpit parafii: najbliższa Msza, pieśni, ogłoszenia, liturgia dnia
+Exec=amenos-app dzis
+Icon=amenos-dzis
+Terminal=false
+Categories=X-AmenOS-Parafia;Calendar;
+StartupWMClass=amenos-app

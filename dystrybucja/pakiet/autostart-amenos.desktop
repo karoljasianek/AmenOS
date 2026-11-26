@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=AmenOS - Dziś w parafii
+Exec=sh -c 'sleep 3; exec amenos-app dzis'
+Icon=amenos
+X-LXQt-Need-Tray=false
+OnlyShowIn=LXQt;

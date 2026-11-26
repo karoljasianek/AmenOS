@@ -1,0 +1,39 @@
+---
+componentName:  amenos
+welcomeStyleCalamares: false
+welcomeExpandingLogo: true
+windowExpanding: normal
+windowSize: 1024px,640px
+windowPlacement: center
+sidebar: widget
+navigation: widget
+
+strings:
+    productName:         "AmenOS"
+    shortProductName:    "AmenOS"
+    version:             "@WERSJA@"
+    shortVersion:        "@WERSJA@"
+    versionedName:       "AmenOS @WERSJA@"
+    shortVersionedName:  "AmenOS @WERSJA@"
+    bootloaderEntryName: "AmenOS"
+    productUrl:          "https://github.com/karoljasianek/AmenOS"
+    supportUrl:          "https://github.com/karoljasianek/AmenOS/issues"
+    knownIssuesUrl:      "https://github.com/karoljasianek/AmenOS/issues"
+    releaseNotesUrl:     "https://github.com/karoljasianek/AmenOS#readme"
+
+images:
+    productLogo:         "logo.png"
+    productIcon:         "logo.png"
+    productWelcome:      "powitanie.png"
+
+slideshow:
+    - "slajd1.png"
+    - "slajd2.png"
+    - "slajd3.png"
+    - "slajd4.png"
+
+style:
+   SidebarBackground:        "#1A2156"
+   SidebarText:              "#FFFFFF"
+   SidebarTextCurrent:       "#F6C640"
+   SidebarBackgroundCurrent: "#2B377A"

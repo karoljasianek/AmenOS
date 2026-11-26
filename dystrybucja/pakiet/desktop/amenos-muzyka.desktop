@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Muzyka mszalna
+Comment=Organy, dzwony i chorały z domeny publicznej
+Exec=amenos-app muzyka
+Icon=amenos-muzyka
+Terminal=false
+Categories=X-AmenOS-Parafia;Audio;Music;
+StartupWMClass=amenos-app

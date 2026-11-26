@@ -1,4 +1,9 @@
-build/
-amenos.iso
-iso/boot/amenos.bin
-iso/boot/amenos-tekst.bin
+# jądro AmenOS 1.x-2.x (folder jadro/)
+jadro/build/
+jadro/amenos.iso
+jadro/iso/boot/amenos.bin
+jadro/iso/boot/amenos-tekst.bin
+# dystrybucja na Lubuntu
+dystrybucja/wyniki/
+*.iso
+__pycache__/

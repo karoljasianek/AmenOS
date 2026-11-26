@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Tablica pieśni
+Comment=Numery pieśni na dziś, z widokiem na rzutnik
+Exec=amenos-app piesni
+Icon=amenos-piesni
+Terminal=false
+Categories=X-AmenOS-Parafia;Presentation;
+StartupWMClass=amenos-app

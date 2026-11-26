@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Dziś w parafii</title>
+<link rel="stylesheet" href="../wspolne/amenos.css">
+<script src="../wspolne/dane.js"></script>
+<script src="../wspolne/liturgia.js"></script>
+<script src="../wspolne/amenos.js"></script>
+<style>
+  body { overflow-y: auto; }
+  .baner {
+    margin: 20px 24px 0; border-radius: 20px; padding: 26px 30px; color: #fff; position: relative; overflow: hidden;
+    background: linear-gradient(135deg, var(--akcent-ciemny) 0%, var(--akcent-noc) 100%);
+    box-shadow: var(--cien);
+  }
+  .baner::after { content: ""; position: absolute; right: -60px; top: -80px; width: 340px; height: 340px; border-radius: 50%;
+                  background: radial-gradient(circle, rgba(255, 230, 160, .35), transparent 65%); }
+  .baner .krzyz { position: absolute; right: 70px; top: 34px; width: 14px; height: 120px; background: rgba(255, 244, 214, .55); border-radius: 4px; }
+  .baner .krzyz::after { content: ""; position: absolute; left: -36px; top: 30px; width: 86px; height: 14px; background: inherit; border-radius: 4px; }
+  .parafia { font-size: 14px; opacity: .85; display: inline-flex; gap: 8px; align-items: center; cursor: text; }
+  .parafia:hover::after { content: "✎ zmień"; font-size: 12px; opacity: .8; }
+  .godzina { font-size: 64px; font-weight: 300; letter-spacing: -0.02em; line-height: 1; margin-top: 10px; }
+  .data { font-size: 20px; margin-top: 6px; opacity: .95; }
+  .obchod { margin-top: 18px; font-size: 22px; font-weight: 650; max-width: 70%; position: relative; z-index: 1; }
+  .okres { margin-top: 6px; display: flex; gap: 10px; align-items: center; font-size: 14px; opacity: .9; }
+  .okres .kropka { width: 14px; height: 14px; background: var(--kolor-lit); box-shadow: 0 0 0 2px rgba(255,255,255,.8); }
+  .siatka { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); padding: 18px 24px; }
+  .karta { cursor: pointer; transition: transform .12s, box-shadow .12s; }
+  .karta:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(16,24,40,.06), 0 12px 28px rgba(16,24,40,.12); }
+  .karta h3 { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .karta h3 img { width: 28px; height: 28px; }
+  .msza-godz { font-size: 34px; font-weight: 650; color: var(--akcent); }
+  .wiersz { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--linia); }
+  .wiersz:last-child { border: 0; }
+  .wiersz b { font-variant-numeric: tabular-nums; }
+  .ogl { padding: 6px 0 6px 12px; border-left: 3px solid var(--akcent); margin: 6px 0; font-size: 14px; }
+  .programy { padding: 0 24px 26px; }
+  .programy h2 { margin: 6px 0 12px; }
+  .ikony { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+  .ikona { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; border-radius: 14px; cursor: pointer; text-align: center; font-size: 13px; font-weight: 550; }
+  .ikona:hover { background: #fff; box-shadow: var(--cien); }
+  .ikona img { width: 56px; height: 56px; }
+  .liczba { display: flex; gap: 14px; align-items: center; }
+  .liczba .n { font-size: 40px; font-weight: 700; color: var(--zloto); min-width: 70px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="baner">
+  <div class="krzyz"></div>
+  <div class="parafia" id="parafia" title="Kliknij, aby wpisać nazwę parafii"></div>
+  <div class="godzina" id="godzina"></div>
+  <div class="data" id="data"></div>
+  <div class="obchod" id="obchod"></div>
+  <div class="okres" id="okres"></div>
+</div>
+
+<div class="siatka">
+  <div class="karta" onclick="Amen.otworz('msze')">
+    <h3><img src="../wspolne/ikony/msze.png" alt="">Najbliższa Msza</h3>
+    <div class="msza-godz" id="msza"></div>
+    <div id="msza-za" style="font-weight:600"></div>
+    <div class="szary maly" id="msza-uwaga" style="margin-top:6px"></div>
+  </div>
+  <div class="karta" onclick="Amen.otworz('piesni')">
+    <h3><img src="../wspolne/ikony/piesni.png" alt="">Pieśni na dziś</h3>
+    <div id="piesni"></div>
+  </div>
+  <div class="karta" onclick="Amen.otworz('ogloszenia')">
+    <h3><img src="../wspolne/ikony/ogloszenia.png" alt="">Ogłoszenia</h3>
+    <div id="ogloszenia"></div>
+  </div>
+  <div class="karta" onclick="Amen.otworz('kalendarz')">
+    <h3><img src="../wspolne/ikony/kalendarz.png" alt="">Najbliższe święta</h3>
+    <div id="swieta"></div>
+  </div>
+  <div class="karta" onclick="Amen.otworz('kalkulator')">
+    <h3><img src="../wspolne/ikony/kalkulator.png" alt="">Liczba dnia</h3>
+    <div class="liczba"><div class="n" id="liczba-n"></div><div><b id="liczba-t"></b><div class="szary maly" id="liczba-o"></div></div></div>
+  </div>
+</div>
+
+<div class="programy">
+  <h2>Programy parafialne</h2>
+  <div class="ikony" id="ikony"></div>
+</div>
+
+<script>
+"use strict";
+const PROGRAMY = [["kalendarz", "Kalendarz liturgiczny"], ["piesni", "Tablica pieśni"], ["modlitewnik", "Modlitewnik i różaniec"],
+  ["spowiedz", "Spowiedź"], ["komunia", "Komunia święta"], ["ogloszenia", "Ogłoszenia"], ["msze", "Porządek Mszy"],
+  ["muzyka", "Muzyka mszalna"], ["kalkulator", "Kalkulator biblijny"]];
+document.getElementById("ikony").innerHTML = PROGRAMY.map(([p, n]) =>
+  `<div class="ikona" onclick="Amen.otworz('${p}')"><img src="../wspolne/ikony/${p}.png" alt="">${n}</div>`).join("");
+
+const parafiaEl = document.getElementById("parafia");
+parafiaEl.onclick = () => {
+  const n = prompt("Nazwa parafii:", Amen.parafia());
+  if (n && n.trim()) { Amen.zapisz("parafia", n.trim()); rysuj(); }
+};
+
+function swieta() {
+  const t = Amen.teraz(), D = LIT.dniOdEpoki(t.r, t.m, t.d), w = [];
+  for (let z = D + 1; z < D + 120 && w.length < 4; z++) {
+    const x = LIT.dataZDni(z), l = LIT.liturgia(x.r, x.m, x.d);
+    if (/^(Uroczystość|Święto) /.test(l.nazwa))
+      w.push(`<div class="wiersz"><span><span class="kropka" style="background:${Amen.KOLOR_LIT[l.kolor]};margin-right:8px"></span>${Amen.esc(l.nazwa.replace(/^(Uroczystość|Święto) /, ""))}</span><b>${x.d}.${String(x.m).padStart(2, "0")}</b></div>`);
+  }
+  return w.join("") || '<span class="szary">Brak w najbliższych miesiącach.</span>';
+}
+
+function rysuj() {
+  const t = Amen.teraz(), l = Amen.ustawAkcent();
+  parafiaEl.textContent = Amen.parafia();
+  document.getElementById("godzina").textContent = `${t.h}:${String(t.min).padStart(2, "0")}`;
+  document.getElementById("data").textContent = Amen.dataSlownie(t.r, t.m, t.d);
+  document.getElementById("obchod").textContent = l.nazwa;
+  document.getElementById("okres").innerHTML = `<span class="kropka"></span>${Amen.esc(l.okres)} · szaty ${l.kolorNazwa} · rok ${l.cyklNiedz}/${l.cyklPowsz === 1 ? "I" : "II"}` +
+    (l.uwaga ? ` · <i>${Amen.esc(l.uwaga)}</i>` : "");
+  const n = Amen.najblizszaMsza();
+  document.getElementById("msza").textContent = n ? `${n.kiedy ? "jutro" : "dziś"} ${Amen.hm(n.godz)}` : "—";
+  document.getElementById("msza-za").textContent = n ? (n.trwa ? "trwa teraz" : Amen.zaIle(n.za)) : "";
+  document.getElementById("msza-uwaga").textContent = Amen.komentarzMszy(n);
+  const p = Amen.piesni();
+  document.getElementById("piesni").innerHTML = AMEN_DANE.piesniEtykiety.map((e, i) =>
+    `<div class="wiersz"><span>${e}</span><b>${p[i] ? Amen.esc(p[i]) : '<span class="szary">· · ·</span>'}</b></div>`).join("");
+  const o = Amen.ogloszenia();
+  document.getElementById("ogloszenia").innerHTML = o.length ? o.slice(0, 3).map(x => `<div class="ogl">${Amen.esc(x)}</div>`).join("") +
+    (o.length > 3 ? `<div class="szary maly">…i jeszcze ${o.length - 3}</div>` : "") : '<span class="szary">Brak ogłoszeń. Proboszcz ma dzień wolny.</span>';
+  document.getElementById("swieta").innerHTML = swieta();
+  const dzienRoku = LIT.dniOdEpoki(t.r, t.m, t.d) - LIT.dniOdEpoki(t.r, 1, 1);
+  const lb = AMEN_DANE.liczbyBiblijne[dzienRoku % AMEN_DANE.liczbyBiblijne.length];
+  document.getElementById("liczba-n").textContent = lb.n;
+  document.getElementById("liczba-t").textContent = lb.tytul;
+  document.getElementById("liczba-o").textContent = lb.opis;
+}
+rysuj();
+setInterval(rysuj, 15000);
+for (const k of ["piesni", "msze", "ogloszenia", "parafia"]) Amen.naZmiane(k, rysuj);
+</script>
+</body>
+</html>

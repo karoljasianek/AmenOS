@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Tablica pieśni</title>
+<link rel="stylesheet" href="../wspolne/amenos.css">
+<link rel="stylesheet" href="tablica.css">
+<script src="../wspolne/dane.js"></script>
+<script src="../wspolne/liturgia.js"></script>
+<script src="../wspolne/amenos.js"></script>
+<script src="../wspolne/dzwiek.js"></script>
+</head>
+<body>
+<div class="pas-lit" id="pas"></div>
+<div class="tresc" style="padding-top:18px">
+  <div class="tablica" id="tablica"></div>
+  <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+    <button class="przycisk" id="czysc">Wyczyść</button>
+    <button class="przycisk" id="losuj">Losuj numery</button>
+    <button class="przycisk glowny" id="pokaz" style="margin-left:auto">Wyświetl na rzutniku ⛶</button>
+  </div>
+  <p class="szary maly" id="status">Kliknij rząd i wpisz numer pieśni. Enter - następny rząd.</p>
+</div>
+<script>
+"use strict";
+const l = Amen.ustawAkcent();
+const pas = document.getElementById("pas");
+pas.textContent = l.nazwa;
+pas.style.background = Amen.KOLOR_LIT[l.kolor];
+pas.style.color = l.kolor === LIT.BIALY ? "#5A4A20" : "#fff";
+const status = document.getElementById("status");
+let piesni = Amen.piesni();
+
+function rysuj() {
+  document.getElementById("tablica").innerHTML = AMEN_DANE.piesniEtykiety.map((e, i) => `
+    <label class="rzad">
+      <span class="etykieta">${e}</span>
+      <span class="karty">${piesni[i] ? [...piesni[i]].map(c => `<span class="karta-nr">${Amen.esc(c)}</span>`).join("") : '<span class="pusto">· · ·</span>'}</span>
+      <input class="wpis" data-i="${i}" inputmode="numeric" maxlength="4" value="${Amen.esc(piesni[i])}">
+    </label>`).join("");
+  document.querySelectorAll(".wpis").forEach(w => {
+    w.oninput = () => { w.value = w.value.replace(/\D/g, "").slice(0, 4); piesni[+w.dataset.i] = w.value; zapisz(false); };
+    w.onkeydown = e => {
+      if (e.key === "Enter" || e.key === "ArrowDown") { e.preventDefault(); const n = document.querySelector(`.wpis[data-i="${+w.dataset.i + 1}"]`); n ? n.focus() : w.blur(); }
+      if (e.key === "ArrowUp") { e.preventDefault(); const n = document.querySelector(`.wpis[data-i="${+w.dataset.i - 1}"]`); if (n) n.focus(); }
+      if (e.key === "Escape") w.blur();
+    };
+    w.onfocus = () => { w.closest(".rzad").classList.add("edycja"); status.textContent = "Wpisz numer (do 4 cyfr). Enter - następny rząd, Esc - koniec."; };
+    w.onblur = () => { w.closest(".rzad").classList.remove("edycja"); status.textContent = "Zapisano. Organista już kartkuje śpiewnik."; };
+  });
+}
+function zapisz(odrysuj = true) {
+  Amen.zapisz("piesni", piesni);
+  if (odrysuj) rysuj();
+  else document.querySelectorAll(".rzad").forEach((r, i) => r.querySelector(".karty").innerHTML =
+    piesni[i] ? [...piesni[i]].map(c => `<span class="karta-nr">${c}</span>`).join("") : '<span class="pusto">· · ·</span>');
+}
+document.getElementById("czysc").onclick = () => { piesni = ["", "", "", "", "", ""]; zapisz(); status.textContent = "Tablica czysta. Organista może grać, co mu w duszy gra."; };
+document.getElementById("losuj").onclick = () => {
+  piesni = piesni.map((_, i) => i === 5 ? "" : String(1 + Math.floor(Math.random() * 999)));
+  zapisz();
+  Dzwiek.efekt("akord");
+  status.textContent = "Duch wieje, kędy chce (J 3,8) - numery wylosowane. Organista ma dziś niespodziankę!";
+};
+document.getElementById("pokaz").onclick = () => window.open("pokaz.html?ekran=2", "_blank");
+Amen.naZmiane("piesni", p => { piesni = p; if (!document.activeElement.classList.contains("wpis")) rysuj(); });
+rysuj();
+</script>
+</body>
+</html>

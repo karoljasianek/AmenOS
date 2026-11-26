@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""AmenOS - uruchamiacz programów parafialnych.
+
+Każdy program (kalendarz, tablica pieśni, spowiedź...) to strona HTML w /usr/share/amenos/aplikacje.
+Ten program otwiera je w zwykłych oknach pulpitu - bez paska adresu, z ikoną i tytułem programu.
+Wszystkie okna działają w jednym procesie: dzięki temu dane parafii są wspólne i zmiana w jednym
+oknie od razu widać w pozostałych (np. pieśni na tablicy i na rzutniku).
+
+Użycie: amenos-app [program]      np. amenos-app piesni
+"""
+import os, sys, mimetypes
+
+from PyQt6.QtCore import QUrl, QBuffer, QIODevice, QByteArray, Qt
+from PyQt6.QtGui import QIcon
+from PyQt6.QtNetwork import QLocalServer, QLocalSocket
+from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtWebEngineCore import (QWebEngineProfile, QWebEnginePage, QWebEngineSettings,
+                                   QWebEngineUrlScheme, QWebEngineUrlSchemeHandler, QWebEngineUrlRequestJob)
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+
+TU = os.path.dirname(os.path.abspath(__file__))
+KATALOG = os.environ.get("AMENOS_APLIKACJE") or next(
+    (p for p in ("/usr/share/amenos/aplikacje", TU) if os.path.isdir(os.path.join(p, "wspolne"))), TU)
+PROGRAMY = {   # nazwa: (tytuł, szerokość, wysokość)
+    "dzis":        ("Dziś w parafii", 1180, 780),
+    "kalendarz":   ("Kalendarz liturgiczny", 1060, 760),
+    "piesni":      ("Tablica pieśni", 760, 820),
+    "modlitewnik": ("Modlitewnik", 1000, 720),
+    "spowiedz":    ("Spowiedź", 620, 780),
+    "komunia":     ("Komunia święta", 640, 820),
+    "ogloszenia":  ("Ogłoszenia parafialne", 1100, 760),
+    "msze":        ("Porządek Mszy", 640, 700),
+    "kalkulator":  ("Kalkulator biblijny", 420, 760),
+    "muzyka":      ("Muzyka mszalna", 640, 640),
+}
+GNIAZDO = f"amenos-app-{os.getuid()}"
+
+schemat = QWebEngineUrlScheme(b"amenos")
+schemat.setSyntax(QWebEngineUrlScheme.Syntax.Host)
+schemat.setFlags(QWebEngineUrlScheme.Flag.SecureScheme | QWebEngineUrlScheme.Flag.LocalScheme |
+                 QWebEngineUrlScheme.Flag.LocalAccessAllowed | QWebEngineUrlScheme.Flag.CorsEnabled)
+QWebEngineUrlScheme.registerScheme(schemat)
+
+
+class Pliki(QWebEngineUrlSchemeHandler):
+    """amenos://app/<ścieżka> -> plik z katalogu programów"""
+    def requestStarted(self, job: QWebEngineUrlRequestJob):
+        sciezka = os.path.normpath(os.path.join(KATALOG, job.requestUrl().path().lstrip("/")))
+        if not sciezka.startswith(os.path.normpath(KATALOG)) or not os.path.isfile(sciezka):
+            job.fail(QWebEngineUrlRequestJob.Error.UrlNotFound)
+            return
+        typ = mimetypes.guess_type(sciezka)[0] or "application/octet-stream"
+        if typ.startswith("text/") or typ in ("application/javascript", "application/json"):
+            typ += "; charset=utf-8"
+        buf = QBuffer(parent=job)
+        with open(sciezka, "rb") as f:
+            buf.setData(QByteArray(f.read()))
+        buf.open(QIODevice.OpenModeFlag.ReadOnly)
+        job.reply(typ.encode(), buf)
+
+
+def program_z_url(url: QUrl):
+    czesci = url.path().strip("/").split("/")
+    return czesci[0] if czesci and czesci[0] in PROGRAMY else None
+
+
+class Strona(QWebEnginePage):
+    def __init__(self, profil, okno):
+        super().__init__(profil, okno)
+        self.okno = okno
+        self.fullScreenRequested.connect(self.pelny_ekran)
+
+    def createWindow(self, typ):                       # window.open() -> nowe okno AmenOS
+        return Okno(self.okno.app_ref).strona
+
+    def pelny_ekran(self, zadanie):
+        zadanie.accept()
+        if zadanie.toggleOn(): self.okno.showFullScreen()
+        else: self.okno.showNormal()
+
+    def javaScriptConsoleMessage(self, poziom, tekst, linia, zrodlo):
+        if os.environ.get("AMENOS_DEBUG"): print(f"[{zrodlo}:{linia}] {tekst}", file=sys.stderr)
+
+
+class Okno(QMainWindow):
+    def __init__(self, app_ref, program=None):
+        super().__init__()
+        self.app_ref = app_ref
+        self.program = None
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self.widok = QWebEngineView(self)
+        self.strona = Strona(app_ref.profil, self)
+        self.widok.setPage(self.strona)
+        self.setCentralWidget(self.widok)
+        self.strona.titleChanged.connect(lambda t: self.setWindowTitle(t or "AmenOS"))
+        self.strona.urlChanged.connect(self.zmiana_adresu)
+        app_ref.okna.append(self)
+        self.destroyed.connect(lambda *_: app_ref.okna.remove(self) if self in app_ref.okna else None)
+        self.resize(900, 700)
+        if program:
+            self.strona.setUrl(QUrl(f"amenos://app/{program}/index.html"))
+        self.show()
+
+    def zmiana_adresu(self, url: QUrl):
+        p = program_z_url(url)
+        if p and p != self.program:
+            self.program = p
+            tytul, w, h = PROGRAMY[p]
+            ikona = os.path.join(KATALOG, "wspolne", "ikony", p + ".png")
+            if os.path.isfile(ikona): self.setWindowIcon(QIcon(ikona))
+            self.setWindowTitle(tytul)
+            self.resize(w, h)
+        # pokaz na rzutniku / drugim monitorze: ...?ekran=2
+        if "ekran=2" in url.query():
+            ekrany = QApplication.screens()
+            if len(ekrany) > 1:
+                self.setScreen(ekrany[-1])
+                self.move(ekrany[-1].geometry().topLeft())
+            self.showFullScreen()
+
+
+class Amen:
+    def __init__(self):
+        self.app = QApplication(sys.argv)
+        self.app.setApplicationName("AmenOS")
+        self.app.setDesktopFileName("amenos-dzis")
+        self.okna = []
+        self.profil = QWebEngineProfile("amenos")
+        dane = os.path.join(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")), "amenos")
+        self.profil.setPersistentStoragePath(os.path.join(dane, "profil"))
+        self.profil.setCachePath(os.path.join(dane, "pamiec"))
+        self.profil.setHttpCacheType(QWebEngineProfile.HttpCacheType.NoCache)
+        self.pliki = Pliki(self.app)
+        self.profil.installUrlSchemeHandler(b"amenos", self.pliki)
+        u = self.profil.settings()
+        for atr in (QWebEngineSettings.WebAttribute.LocalStorageEnabled, QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows,
+                    QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls):
+            u.setAttribute(atr, True)
+        u.setAttribute(QWebEngineSettings.WebAttribute.PlaybackRequiresUserGesture, False)   # organy i dzwony grają od razu
+        self.serwer = QLocalServer()
+        self.serwer.newConnection.connect(self.polaczenie)
+        QLocalServer.removeServer(GNIAZDO)
+        self.serwer.listen(GNIAZDO)
+
+    def polaczenie(self):
+        s = self.serwer.nextPendingConnection()
+        s.waitForReadyRead(1000)
+        self.otworz(bytes(s.readAll()).decode().strip() or "dzis")
+        s.disconnectFromServer()
+
+    def otworz(self, program):
+        for o in self.okna:                               # program już otwarty - pokaż jego okno
+            if o.program == program and not o.isFullScreen():
+                o.showNormal(); o.raise_(); o.activateWindow()
+                return
+        Okno(self, program if program in PROGRAMY else "dzis")
+
+
+def main():
+    program = sys.argv[1] if len(sys.argv) > 1 else "dzis"
+    s = QLocalSocket()
+    s.connectToServer(GNIAZDO)
+    if s.waitForConnected(300):                          # AmenOS już działa - poproś o nowe okno
+        s.write(program.encode()); s.flush(); s.waitForBytesWritten(1000)
+        return 0
+    a = Amen()
+    a.otworz(program)
+    return a.app.exec()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Modlitewnik
+Comment=Modlitwy codzienne i różaniec
+Exec=amenos-app modlitewnik
+Icon=amenos-modlitewnik
+Terminal=false
+Categories=X-AmenOS-Parafia;Literature;
+StartupWMClass=amenos-app

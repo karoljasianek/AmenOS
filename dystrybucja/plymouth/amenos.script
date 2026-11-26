@@ -1,0 +1,40 @@
+# AmenOS - ekran startowy
+Window.SetBackgroundTopColor(0.10, 0.13, 0.30);
+Window.SetBackgroundBottomColor(0.04, 0.05, 0.13);
+sw = Window.GetWidth(); sh = Window.GetHeight();
+logo.image = Image("logo.png");
+skala = Math.Min(1, sw / 1400);
+logo.image = logo.image.Scale(logo.image.GetWidth() * skala, logo.image.GetHeight() * skala);
+logo.sprite = Sprite(logo.image);
+logo.sprite.SetPosition(sw / 2 - logo.image.GetWidth() / 2, sh / 2 - logo.image.GetHeight() / 2 - 40 * skala, 1);
+kropka = Image("kropka.png");
+for (i = 0; i < 3; i++) {
+  k[i] = Sprite(kropka);
+  k[i].SetPosition(sw / 2 - 40 + i * 32, sh / 2 + logo.image.GetHeight() / 2 + 10, 2);
+}
+t = 0;
+fun odswiez() {
+  t++;
+  for (i = 0; i < 3; i++) {
+    f = Math.Sin(t / 12 - i * 0.9);
+    if (f < 0) f = 0;
+    k[i].SetOpacity(0.25 + 0.75 * f);
+  }
+}
+Plymouth.SetRefreshFunction(odswiez);
+
+# hasło do zaszyfrowanego dysku
+fun haslo(podpowiedz, kule) {
+  napis.image = Image.Text(podpowiedz + "  " + kule, 1, 1, 1);
+  napis.sprite = Sprite(napis.image);
+  napis.sprite.SetPosition(sw / 2 - napis.image.GetWidth() / 2, sh * 0.8, 3);
+}
+Plymouth.SetDisplayPasswordFunction(haslo);
+fun normalnie() { napis.sprite.SetOpacity(0); }
+Plymouth.SetDisplayNormalFunction(normalnie);
+fun komunikat(tekst) {
+  kom.image = Image.Text(tekst, 0.8, 0.84, 0.95);
+  kom.sprite = Sprite(kom.image);
+  kom.sprite.SetPosition(sw / 2 - kom.image.GetWidth() / 2, sh * 0.88, 3);
+}
+Plymouth.SetMessageFunction(komunikat);

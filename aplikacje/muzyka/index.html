@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Muzyka mszalna</title>
+<link rel="stylesheet" href="../wspolne/amenos.css">
+<script src="../wspolne/dane.js"></script>
+<script src="../wspolne/liturgia.js"></script>
+<script src="../wspolne/amenos.js"></script>
+<script src="../wspolne/dzwiek.js"></script>
+<style>
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .lista { flex: 1; overflow-y: auto; padding: 0 16px; }
+  .utw { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 4px 12px; padding: 10px 14px; border-radius: 12px; cursor: pointer; }
+  .utw:hover { background: #fff; }
+  .utw.wyb { background: var(--akcent-tlo); }
+  .utw .nr { color: var(--szary); text-align: center; font-variant-numeric: tabular-nums; }
+  .utw.gra .nr { color: var(--akcent); font-size: 18px; }
+  .utw .t { font-weight: 600; } .utw.gra .t { color: var(--akcent); }
+  .utw .o { grid-column: 2; font-size: 13px; color: var(--szary); }
+  .utw .cz { grid-row: 1 / span 2; grid-column: 3; font-size: 13px; color: var(--szary); text-align: right; }
+  .odtw { padding: 14px 24px 18px; background: #fff; border-top: 1px solid var(--linia); }
+  .pasek { height: 6px; background: #E2E5EB; border-radius: 3px; overflow: hidden; margin: 12px 0 6px; }
+  .pasek i { display: block; height: 100%; width: 0; background: var(--akcent); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="naglowek">
+  <img src="../wspolne/ikony/muzyka.png" alt="">
+  <div><h1>Muzyka mszalna</h1><div class="podtytul">Organy z pogłosem kościoła · melodie z domeny publicznej</div></div>
+</div>
+<div class="lista" id="lista"></div>
+<div class="odtw">
+  <div style="display:flex;gap:10px;align-items:center">
+    <button class="przycisk glowny" id="graj">► Graj</button>
+    <button class="przycisk" id="stop">■ Stop</button>
+    <button class="przycisk" id="dzwon" title="Dzwon kościelny bije 3 razy">Dzwon</button>
+    <span class="szary maly" style="margin-left:auto">Enter - graj, spacja - stop</span>
+  </div>
+  <div class="pasek"><i id="postep"></i></div>
+  <div class="maly" id="czas">Wybierz utwór i naciśnij Graj.</div>
+</div>
+<script>
+"use strict";
+Amen.ustawAkcent();
+const U = AMEN_DANE.utwory;
+let wyb = 0, gra = -1, h = null;
+const mmss = ms => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
+function rysuj() {
+  document.getElementById("lista").innerHTML = U.map((u, i) => `<div class="utw ${i === wyb ? "wyb" : ""} ${i === gra ? "gra" : ""}" data-i="${i}">
+    <span class="nr">${i === gra ? "♫" : i + 1}</span><span class="t">${Amen.esc(u.tytul)}</span><span class="cz">${Amen.esc(u.czesc)}</span><span class="o">${Amen.esc(u.opis)}</span></div>`).join("");
+  document.querySelectorAll(".utw").forEach(e => { e.onclick = () => { wyb = +e.dataset.i; rysuj(); }; e.ondblclick = () => graj(+e.dataset.i); });
+}
+function graj(i) {
+  stop();
+  gra = i; wyb = i;
+  h = Dzwiek.utwor(U[i], () => { gra = -1; h = null; rysuj(); });
+  rysuj();
+}
+function stop() { if (h) h.zatrzymaj(); h = null; gra = -1; rysuj(); }
+setInterval(() => {
+  if (!h) { document.getElementById("postep").style.width = "0"; if (gra < 0) document.getElementById("czas").textContent = "Wybierz utwór i naciśnij Graj."; return; }
+  const p = h.postep();
+  document.getElementById("postep").style.width = (100 * p / h.calosc) + "%";
+  document.getElementById("czas").textContent = `${U[gra].tytul}   ${mmss(p)} / ${mmss(h.calosc)}`;
+}, 250);
+document.getElementById("graj").onclick = () => graj(wyb);
+document.getElementById("stop").onclick = stop;
+document.getElementById("dzwon").onclick = () => Dzwiek.bij(3);
+addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" && wyb < U.length - 1) { wyb++; rysuj(); }
+  else if (e.key === "ArrowUp" && wyb > 0) { wyb--; rysuj(); }
+  else if (e.key === "Enter") graj(wyb);
+  else if (e.key === " ") { e.preventDefault(); stop(); }
+});
+rysuj();
+</script>
+</body>
+</html>

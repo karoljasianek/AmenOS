@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Kalendarz liturgiczny
+Comment=Kalendarz Kościoła w Polsce z kolorami szat
+Exec=amenos-app kalendarz
+Icon=amenos-kalendarz
+Terminal=false
+Categories=X-AmenOS-Parafia;Calendar;
+StartupWMClass=amenos-app

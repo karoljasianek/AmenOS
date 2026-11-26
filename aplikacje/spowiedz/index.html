@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Spowiedź</title>
+<link rel="stylesheet" href="../wspolne/amenos.css">
+<script src="../wspolne/dane.js"></script>
+<script src="../wspolne/liturgia.js"></script>
+<script src="../wspolne/amenos.js"></script>
+<script src="../wspolne/dzwiek.js"></script>
+<style>
+  body { display: flex; flex-direction: column; height: 100vh; }
+  header { display: flex; align-items: center; gap: 14px; padding: 12px 20px; background: #fff; border-bottom: 1px solid var(--linia); }
+  header .awatar { width: 46px; height: 46px; border-radius: 50%; background: #EDE9FE; display: grid; place-items: center; }
+  header .awatar img { width: 30px; }
+  header .stan { font-size: 13px; color: var(--szary); display: flex; align-items: center; gap: 7px; }
+  header .stan::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #22C55E; }
+  #czat { flex: 1; overflow-y: auto; padding: 18px 18px 8px; display: flex; flex-direction: column; gap: 10px; background: #F4F5F9; position: relative; }
+  .dymek { max-width: 78%; padding: 10px 14px; border-radius: 18px; line-height: 1.45; animation: wjazd .25s ease-out; white-space: pre-wrap; user-select: text; }
+  .dymek.kaplan { background: #fff; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .07); align-self: flex-start; border-bottom-left-radius: 6px; }
+  .dymek.wierny { background: var(--akcent); color: #fff; align-self: flex-end; border-bottom-right-radius: 6px; }
+  .dymek.formula { background: #FFF4D6; color: #5A4210; box-shadow: inset 0 0 0 1px #E2C26A; align-self: flex-start; font-weight: 550; }
+  .pisze { align-self: flex-start; background: #fff; border-radius: 18px; padding: 12px 16px; display: flex; gap: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.07); }
+  .pisze i { width: 8px; height: 8px; border-radius: 50%; background: #9AA0AA; animation: kropki 1s infinite; }
+  .pisze i:nth-child(2) { animation-delay: .15s; } .pisze i:nth-child(3) { animation-delay: .3s; }
+  @keyframes kropki { 0%, 60%, 100% { opacity: .3; transform: none; } 30% { opacity: 1; transform: translateY(-3px); } }
+  @keyframes wjazd { from { opacity: 0; transform: translateY(8px); } }
+  footer { background: #fff; border-top: 1px solid var(--linia); padding: 10px 16px 14px; }
+  .podp { display: inline-block; max-width: 100%; padding: 6px 14px; border-radius: 999px; margin-bottom: 8px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          background: var(--akcent-tlo); box-shadow: inset 0 0 0 1px var(--akcent-mgla); color: var(--akcent-tekst); font-size: 14px; }
+  .wiersz-wej { display: flex; gap: 10px; }
+  .wyslij { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--akcent); color: #fff; font-size: 20px; cursor: pointer; flex: none; }
+  .wyslij:disabled { background: #C8CCD4; cursor: default; }
+  .srodek { margin: auto; text-align: center; max-width: 440px; display: flex; flex-direction: column; align-items: center; gap: 14px; animation: wjazd .3s; }
+  .srodek img { width: 76px; }
+  /* niszczarka */
+  .niszczarka { position: absolute; left: 50px; right: 50px; bottom: 0; height: 34px; background: #3A3F4B; border-radius: 10px 10px 0 0; z-index: 5; }
+  .niszczarka::after { content: ""; position: absolute; left: 20px; right: 20px; top: 12px; height: 5px; background: #15171C; border-radius: 3px; }
+  .mielone .dymek, .mielone .pisze { transition: transform 1.6s cubic-bezier(.5, 0, .9, .5), opacity 1.6s; transform: translateY(900px) scaleY(.6); opacity: .2; }
+  .paski { display: flex; justify-content: center; gap: 8px; height: 0; overflow: hidden; transition: height 1.6s ease-in; }
+  .paski i { width: 6px; background: linear-gradient(var(--akcent), #fff); border-radius: 0 0 3px 3px; }
+  .paski i:nth-child(3n) { background: #fff; box-shadow: inset 0 0 0 1px #ddd; }
+</style>
+</head>
+<body>
+<header>
+  <div class="awatar"><img src="../wspolne/ikony/spowiedz.png" alt=""></div>
+  <div><b>Spowiednik</b><div class="stan">zawsze dostępny · rozmowa zniknie po zakończeniu</div></div>
+</header>
+<div id="czat"></div>
+<footer id="dol"></footer>
+<script>
+"use strict";
+/* Wszystko, co wierny napisze, jest tylko w pamięci tego okna - nic nie trafia na dysk,
+   a po zakończeniu rozmowa jest mielona w niszczarce i wymazywana. */
+Amen.ustawAkcent();
+const czat = document.getElementById("czat"), dol = document.getElementById("dol");
+let s;
+const PODP = [null, "Zacznij od pozdrowienia", "Kiedy była ostatnia spowiedź? Czy pokuta została odprawiona?",
+              "Wpisz grzech i Enter - każdy w osobnej wiadomości", "Odmów akt żalu", "Odpowiedz", "Odpowiedz", "Odpowiedz"];
+const DOM = [null, "Niech będzie pochwalony Jezus Chrystus.", "Ostatnia spowiedź: miesiąc temu. Pokuta odprawiona.",
+             "Więcej grzechów nie pamiętam.", AMEN_DANE.aktZalu, "Amen.", "Bo Jego miłosierdzie trwa na wieki.", "Bóg zapłać."];
+const male = t => t.toLowerCase().replace(/[ąćęłńóśźż]/g, c => "acelnoszz"["ąćęłńóśźż".indexOf(c)]);
+
+function nowa() { s = { etap: 0, kolejka: [], pisze: false, grzechow: 0, zachecono: false, tematy: [] }; czat.innerHTML = ""; rysujStart(); }
+
+function rysujStart() {
+  czat.innerHTML = `<div class="srodek"><img src="../wspolne/ikony/spowiedz.png" alt=""><h1>Spowiedź święta</h1>
+    <div class="szary">Rozmowa jest prywatna: nic nie jest zapisywane na dysku, a po zakończeniu cała rozmowa trafi do niszczarki i zniknie z pamięci.</div>
+    <div style="color:#8A6A20;font-weight:650">Kolejka do konfesjonału: 0 osób. Dziś bez czekania!</div>
+    <button class="przycisk glowny duzy" id="start">Rozpocznij</button></div>`;
+  dol.innerHTML = "";
+  document.getElementById("start").onclick = () => { s.etap = 1; czat.innerHTML = ""; rysujDol(); };
+}
+
+function dymek(kto, tekst) {
+  const d = document.createElement("div");
+  d.className = "dymek " + kto;
+  d.textContent = tekst;
+  czat.appendChild(d);
+  czat.scrollTop = czat.scrollHeight;
+}
+function kaplan(tekst, kto = "kaplan") { s.kolejka.push([kto, tekst]); if (!s.pisze) dalejKolejka(); }
+function dalejKolejka() {
+  if (!s.kolejka.length) { s.pisze = false; rysujDol(); return; }
+  s.pisze = true; rysujDol();
+  const p = document.createElement("div"); p.className = "pisze"; p.innerHTML = "<i></i><i></i><i></i>";
+  czat.appendChild(p); czat.scrollTop = czat.scrollHeight;
+  const [kto, tekst] = s.kolejka[0];
+  setTimeout(() => {
+    if (!s.pisze) return;
+    p.remove(); s.kolejka.shift();
+    dymek(kto, tekst);
+    Dzwiek.efekt("wiadomosc");
+    dalejKolejka();
+  }, Math.min(3800, 900 + tekst.length * 14));
+}
+
+function rysujDol() {
+  if (s.etap >= 1 && s.etap <= 7) {
+    const dom = DOM[s.etap];
+    dol.innerHTML = `${dom && !s.pisze ? `<div class="podp" id="podp" title="Kliknij, aby wysłać">» ${Amen.esc(dom)}</div>` : ""}
+      <div class="wiersz-wej"><input class="pole" id="wej" autocomplete="off" placeholder="${s.pisze ? "Spowiednik pisze…" : Amen.esc(PODP[s.etap])}" ${s.pisze ? "disabled" : ""}>
+      <button class="wyslij" id="wyslij" ${s.pisze ? "disabled" : ""}>➤</button></div>`;
+    const w = document.getElementById("wej");
+    if (!s.pisze) w.focus();
+    w.onkeydown = e => { if (e.key === "Enter") odpowiedz(w.value); };
+    document.getElementById("wyslij").onclick = () => odpowiedz(w.value);
+    const pp = document.getElementById("podp");
+    if (pp) pp.onclick = () => odpowiedz("");
+  } else if (s.etap === 8) {
+    dol.innerHTML = `<div class="szary maly" style="text-align:center;margin-bottom:8px">Pan odpuścił ci grzechy. Rozmowa może zniknąć.</div>
+      <div style="text-align:center"><button class="przycisk glowny duzy" id="miel">Zakończ i zmiel w niszczarce</button></div>`;
+    document.getElementById("miel").onclick = niszcz;
+  } else dol.innerHTML = "";
+}
+
+function odpowiedz(wpis) {
+  if (s.pisze || s.etap < 1 || s.etap > 7) return;
+  wpis = wpis.trim();
+  const tekst = wpis || DOM[s.etap] || "", m = male(tekst);
+  switch (s.etap) {
+    case 1:
+      dymek("wierny", tekst);
+      kaplan("Na wieki wieków. Amen. W imię Ojca i Syna, i Ducha Świętego. Bóg, który oświeca każde serce, niech ci da prawdziwe poznanie twoich grzechów i swojego miłosierdzia.");
+      s.etap = 2; break;
+    case 2:
+      dymek("wierny", tekst);
+      kaplan("Słucham. Wyznaj swoje grzechy - możesz pisać po kolei, każdy w osobnej wiadomości.");
+      s.etap = 3; break;
+    case 3:
+      if (!wpis && !s.grzechow && !s.zachecono) {
+        s.zachecono = true;
+        kaplan("Nie bój się. Bóg zna twoje serce i czeka na ciebie z miłością. Co chcesz Mu powiedzieć?");
+        break;
+      }
+      if (!wpis || m.includes("nie pamietam") || m.includes("prosze o pokute")) {
+        dymek("wierny", wpis ? tekst : "Więcej grzechów nie pamiętam. Za wszystkie serdecznie żałuję i proszę o pokutę i rozgrzeszenie.");
+        const T = AMEN_DANE.tematySpowiedzi;
+        let nauka = "Dziękuję za szczere wyznanie. Bóg cieszy się z każdego, kto do Niego wraca. ";
+        s.tematy.slice(0, 2).forEach(t => nauka += T[t].nauka + " ");
+        nauka += "Pamiętaj, że Boże miłosierdzie jest większe niż każdy grzech.";
+        const mod = s.grzechow <= 3 ? "jedną dziesiątkę różańca" : s.grzechow <= 7 ? "Koronkę do Miłosierdzia Bożego" : "jedną część różańca";
+        kaplan(nauka);
+        kaplan(`Za pokutę odmów ${mod}.${s.tematy.length ? " " + T[s.tematy[0]].pokuta : ""}`);
+        kaplan("Czy żałujesz za swoje grzechy? Odmów teraz akt żalu.");
+        s.etap = 4;
+      } else {
+        dymek("wierny", tekst);
+        s.grzechow++;
+        AMEN_DANE.tematySpowiedzi.forEach((t, i) => { if (!s.tematy.includes(i) && t.klucze.some(k => m.includes(k))) s.tematy.push(i); });
+      }
+      break;
+    case 4: dymek("wierny", tekst); kaplan(AMEN_DANE.rozgrzeszenie, "formula"); s.etap = 5; break;
+    case 5: dymek("wierny", tekst); kaplan("Chwalcie Pana, bo jest dobry."); s.etap = 6; break;
+    case 6: dymek("wierny", tekst); kaplan("Pan odpuścił tobie grzechy. Idź w pokoju."); s.etap = 7; break;
+    case 7: dymek("wierny", tekst); s.etap = 8; break;
+  }
+  rysujDol();
+}
+
+function niszcz() {
+  s.etap = 9;
+  dol.innerHTML = `<div class="paski" id="paski">${"<i></i>".repeat(28)}</div><div class="szary maly" style="text-align:center">Mielenie… wrrrr…</div>`;
+  const n = document.createElement("div"); n.className = "niszczarka"; czat.appendChild(n);
+  czat.scrollTop = czat.scrollHeight;
+  Dzwiek.efekt("niszczarka");
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    czat.classList.add("mielone");
+    const p = document.getElementById("paski");
+    p.style.height = "70px";
+    p.querySelectorAll("i").forEach((x, i) => x.style.height = (40 + (i * 37) % 30) + "px");
+  }));
+  setTimeout(() => {
+    czat.classList.remove("mielone");
+    nowa();
+    czat.innerHTML = `<div class="srodek"><img src="../wspolne/ikony/amenos.png" alt=""><h1 style="color:#8A6A20">Szczęść Boże!</h1>
+      <div class="szary">Rozmowa została zmielona w niszczarce i wymazana z pamięci. Nikt jej nie przeczyta - nawet ten komputer.</div>
+      <button class="przycisk" id="znowu">Nowa spowiedź</button></div>`;
+    document.getElementById("znowu").onclick = nowa;
+  }, 2100);
+}
+addEventListener("keydown", e => { if (e.key === "Enter" && s.etap === 0) document.getElementById("start")?.click(); });
+addEventListener("beforeunload", () => { czat.innerHTML = ""; s = null; });
+nowa();
+</script>
+</body>
+</html>

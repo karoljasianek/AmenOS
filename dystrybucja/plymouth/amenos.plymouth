@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=AmenOS
+Description=Krzyż, nazwa i trzy pulsujące kropki
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/amenos
+ScriptFile=/usr/share/plymouth/themes/amenos/amenos.script

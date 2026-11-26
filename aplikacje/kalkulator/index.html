@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Kalkulator biblijny</title>
+<link rel="stylesheet" href="../wspolne/amenos.css">
+<script src="../wspolne/dane.js"></script>
+<script src="../wspolne/liturgia.js"></script>
+<script src="../wspolne/amenos.js"></script>
+<script src="../wspolne/dzwiek.js"></script>
+<style>
+  body { padding: 14px; display: flex; flex-direction: column; gap: 12px; height: 100vh; }
+  .ekran { border-radius: 16px; padding: 14px 20px 12px; background: linear-gradient(#24305A, #161D38); color: #fff; text-align: right; min-height: 112px;
+           display: flex; flex-direction: column; justify-content: space-between; box-shadow: var(--cien); }
+  .ekran .gora { display: flex; justify-content: space-between; color: #9AAAD0; font-size: 15px; min-height: 20px; }
+  .ekran .rzym { color: #F6C640; font-weight: 650; }
+  .ekran .wynik { font-size: 44px; font-weight: 300; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; }
+  .panel { border-radius: 16px; padding: 12px 16px; background: #FBF6E6; box-shadow: inset 0 0 0 1px #E3CF91; min-height: 104px; }
+  .panel b { color: #7A5A10; display: flex; align-items: center; gap: 8px; }
+  .panel b img { width: 22px; }
+  .panel div { color: #3A3020; font-size: 14px; margin-top: 4px; }
+  .klawisze { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; flex: 1; }
+  .k { border: 0; border-radius: 12px; font-size: 21px; font-weight: 600; cursor: pointer; background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.09);
+       transition: transform .06s, filter .1s; min-height: 50px; }
+  .k:active { transform: scale(.96); filter: brightness(.92); }
+  .k.op { background: #E6ECF7; color: #2F62D9; }
+  .k.row { background: #2F62D9; color: #fff; }
+  .k.prz { background: #7D4CC9; color: #fff; font-size: 16px; }
+  .k.fn { background: #E9EBF0; }
+  .k.tw { background: #F6EFD9; color: #6B4E12; font-size: 14.5px; grid-column: span 2; box-shadow: inset 0 0 0 1px #E3CF91; }
+  .k.tw.wl { background: #F6C640; }
+  .k.szer4 { grid-column: span 4; }
+</style>
+</head>
+<body>
+<div class="ekran"><div class="gora"><span class="rzym" id="rzym"></span><span id="dzialanie"></span></div><div class="wynik" id="wynik">0</div></div>
+<div class="panel"><b><img src="../wspolne/ikony/amenos.png" alt=""><span id="ptytul">Kalkulator biblijny</span></b><div id="popis">Liczby w Piśmie Świętym mają znaczenie. Policz coś - może trafisz na jedną z nich!</div></div>
+<div class="klawisze" id="klawisze"></div>
+<script>
+"use strict";
+Amen.ustawAkcent();
+const KL = [["Przebacz", "prz", "C"], ["←", "fn", "B"], ["√", "fn", "R"], ["÷", "op", "/"],
+  ["7", "", "7"], ["8", "", "8"], ["9", "", "9"], ["×", "op", "*"], ["4", "", "4"], ["5", "", "5"], ["6", "", "6"], ["−", "op", "-"],
+  ["1", "", "1"], ["2", "", "2"], ["3", "", "3"], ["+", "op", "+"], ["±", "", "N"], ["0", "", "0"], [",", "", ","], ["=", "row", "="],
+  ["Dziesięcina", "tw", "T"], ["Rozmnóż ×1000", "tw", "M"], ["Do Wielkanocy", "tw", "E"], ["Do Bożego Narodzenia", "tw", "X"], ["Liczby rzymskie", "tw szer4", "Z"]];
+document.getElementById("klawisze").innerHTML = KL.map(([t, k, a]) => `<button class="k ${k}" data-a="${a}">${t}</button>`).join("");
+const MAKS = 9e12;
+let wpis = "", wartosc = 0, akum = 0, op = null, nowa = true, blad = false, rzymskie = false;
+
+const panel = (t, o) => { document.getElementById("ptytul").textContent = t; document.getElementById("popis").textContent = o; };
+const zaokr = v => Math.round(v * 1e6) / 1e6;
+function format(v) {
+  const s = Math.abs(zaokr(v)).toFixed(6).replace(/\.?0+$/, ""), [c, u] = s.split(".");
+  return (v < 0 ? "−" : "") + c.replace(/\B(?=(\d{3})+(?!\d))/g, " ") + (u ? "," + u : "");
+}
+function rzymska(v) {
+  if (!Number.isInteger(v) || v <= 0 || v > 3999) return "(tylko liczby całkowite 1-3999)";
+  const w = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1], z = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
+  let o = ""; w.forEach((x, i) => { while (v >= x) { o += z[i]; v -= x; } }); return o;
+}
+const biezaca = () => (wpis && !nowa) ? parseFloat(wpis.replace(",", ".")) : wartosc;
+function sprawdzBiblie(v) { const b = AMEN_DANE.liczbyBiblijne.find(x => x.n === v); if (b) { panel(b.tytul, b.opis); Dzwiek.pik(1046.5, undefined, 0.15); } }
+function bladZ(t, o) { blad = true; wpis = ""; op = null; nowa = true; panel(t, o); }
+function licz() {
+  const b = wpis ? parseFloat(wpis.replace(",", ".")) : wartosc;
+  let w = b;
+  if (op === "+") w = akum + b; else if (op === "-") w = akum - b; else if (op === "*") w = akum * b;
+  else if (op === "/") { if (b === 0) { bladZ("Dzielenie przez zero", "Nieskończony jest tylko Bóg. Spróbuj podzielić przez coś innego."); Dzwiek.efekt("amen"); return; } w = akum / b; }
+  if (Math.abs(w) > MAKS) { bladZ("Za duża liczba", "Policz gwiazdy, jeśli zdołasz (Rdz 15,5) - ten kalkulator liczy do 9 bilionów."); return; }
+  wartosc = zaokr(w);
+}
+function dniDo(wielk) {
+  const t = Amen.teraz(), dzis = LIT.dniOdEpoki(t.r, t.m, t.d);
+  let r = t.r, cel = wielk ? LIT.wielkanoc(r) : LIT.dniOdEpoki(r, 12, 25);
+  if (cel < dzis) { r++; cel = wielk ? LIT.wielkanoc(r) : LIT.dniOdEpoki(r, 12, 25); }
+  const x = LIT.dataZDni(cel);
+  return [cel - dzis, `${x.d} ${LIT.MIES_DOP[x.m]} ${x.r} (${LIT.DNI[LIT.dzienTygodnia(cel)]})`];
+}
+function akcja(a) {
+  if (blad && !"C0123456789EXZ".includes(a)) return;
+  if (blad) { blad = false; wartosc = akum = 0; }
+  if (/\d/.test(a)) { if (nowa) { wpis = ""; nowa = false; } if (wpis.replace(/\D/g, "").length < 13) wpis = (wpis === "0" ? "" : wpis) + a; }
+  else if (a === ",") { if (nowa) { wpis = ""; nowa = false; } if (!wpis.includes(",")) wpis = (wpis || "0") + ","; }
+  else if ("+-*/".includes(a)) { if (op && wpis) { licz(); if (blad) return rysuj(); } else if (wpis) wartosc = biezaca(); akum = wartosc; op = a; wpis = ""; nowa = true; }
+  else if (a === "=") { if (op) licz(); else if (wpis) wartosc = biezaca(); if (!blad) { op = null; wpis = ""; nowa = true; sprawdzBiblie(wartosc); } }
+  else if (a === "C") { wpis = ""; wartosc = akum = 0; op = null; nowa = true; panel("Przebaczone!", "Wszystkie błędy zostały odpuszczone. Możesz zacząć liczyć od nowa."); }
+  else if (a === "B") { if (wpis && !nowa) wpis = wpis.slice(0, -1); }
+  else if (a === "N") { if (wpis && !nowa) wpis = wpis.startsWith("-") ? wpis.slice(1) : "-" + wpis; else wartosc = -wartosc; }
+  else if (a === "R") { const v = biezaca(); if (v < 0) bladZ("Pierwiastek z liczby ujemnej", "Tajemnica większa niż ten kalkulator. Spróbuj z liczbą dodatnią."); else { wartosc = zaokr(Math.sqrt(v)); wpis = ""; nowa = true; sprawdzBiblie(wartosc); } }
+  else if (a === "T") { wartosc = zaokr(biezaca() / 10); wpis = ""; nowa = true; op = null; panel("Dziesięcina", `Dziesiąta część to ${format(wartosc)}. „Przynieście całą dziesięcinę do spichlerza” (Ml 3,10).`); }
+  else if (a === "M") { const v = biezaca() * 1000; if (Math.abs(v) > MAKS) { bladZ("Za duża liczba", "Nawet cud ma swoje granice w tym kalkulatorze."); } else { wartosc = zaokr(v); wpis = ""; nowa = true; op = null; panel("Rozmnożenie", "Jezus rozmnożył pięć chlebów i dwie ryby - i wszyscy najedli się do syta (Mt 14,13-21)."); sprawdzBiblie(wartosc); Dzwiek.efekt("akord"); } }
+  else if (a === "E" || a === "X") {
+    const w = a === "E", [n, d] = dniDo(w); wartosc = n; wpis = ""; nowa = true; op = null;
+    if (!n) panel(w ? "Wielkanoc!" : "Boże Narodzenie!", w ? "Dziś Zmartwychwstanie Pańskie. Alleluja!" : "Dziś narodził się Zbawiciel. Chwała na wysokości Bogu!");
+    else panel(w ? "Ile dni do Wielkanocy" : "Ile dni do Bożego Narodzenia", `Do ${w ? "Wielkanocy" : "Bożego Narodzenia"} zostało ${n} ${n === 1 ? "dzień" : "dni"}: ${d}.`);
+  }
+  else if (a === "Z") rzymskie = !rzymskie;
+  rysuj();
+}
+function rysuj() {
+  const sym = { "+": "+", "-": "−", "*": "×", "/": "÷" };
+  document.getElementById("dzialanie").textContent = op ? `${format(akum)} ${sym[op]}` : "";
+  const w = blad ? "Błąd" : (wpis && !nowa) ? wpis.replace("-", "−") : format(wartosc), el = document.getElementById("wynik");
+  el.textContent = w; el.style.fontSize = w.length > 13 ? "30px" : "44px";
+  document.getElementById("rzym").textContent = rzymskie ? rzymska(biezaca()) : "";
+  document.querySelector('[data-a="Z"]').classList.toggle("wl", rzymskie);
+}
+document.querySelectorAll(".k").forEach(b => b.onclick = () => { Dzwiek.efekt("klik"); akcja(b.dataset.a); });
+addEventListener("keydown", e => {
+  const m = { Enter: "=", "=": "=", Backspace: "B", Delete: "C", Escape: "C", c: "C", C: "C", r: "Z", R: "Z", ".": ",", ",": ",", "/": "/", "*": "*", "-": "-", "+": "+" };
+  const a = /^\d$/.test(e.key) ? e.key : m[e.key];
+  if (a) { e.preventDefault(); akcja(a); }
+});
+rysuj();
+</script>
+</body>
+</html>

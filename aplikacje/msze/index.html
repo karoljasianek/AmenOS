@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Porządek Mszy</title>
+<link rel="stylesheet" href="../wspolne/amenos.css">
+<script src="../wspolne/dane.js"></script>
+<script src="../wspolne/liturgia.js"></script>
+<script src="../wspolne/amenos.js"></script>
+<style>
+  .licznik { margin: 4px 24px 18px; border-radius: 18px; padding: 20px 24px; color: #fff; box-shadow: var(--cien);
+             background: linear-gradient(135deg, var(--akcent), var(--akcent-noc)); }
+  .licznik .gl { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .licznik .kiedy { font-size: 32px; font-weight: 650; }
+  .licznik .za { font-size: 20px; font-weight: 600; }
+  .licznik .uw { margin-top: 8px; opacity: .92; }
+  .rzad { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 14px 4px; border-bottom: 1px solid var(--linia); position: relative; }
+  .rzad:last-child { border: 0; }
+  .rzad.dzis::before { content: ""; position: absolute; left: -14px; top: 14px; bottom: 14px; width: 4px; border-radius: 2px; background: var(--akcent); }
+  .rzad b { font-size: 15.5px; }
+  .rzad .godz { color: #4B5160; grid-column: 1; }
+  .rzad .przycisk { grid-row: 1 / span 2; grid-column: 2; align-self: center; padding: 6px 14px; }
+</style>
+</head>
+<body>
+<div class="naglowek">
+  <img src="../wspolne/ikony/msze.png" alt="">
+  <div><h1>Porządek Mszy Świętych</h1><div class="podtytul" id="parafia"></div></div>
+</div>
+<div class="licznik">
+  <div class="maly" style="opacity:.85">Najbliższa Msza</div>
+  <div class="gl"><span class="kiedy" id="kiedy"></span><span class="za" id="za"></span></div>
+  <div class="uw" id="uwaga"></div>
+</div>
+<div class="tresc" style="padding-top:0">
+  <div class="karta" id="lista" style="padding-left:28px"></div>
+  <p class="szary maly">Godziny wpisuj dowolnie, np. 7:00, 9:00 (suma), 18:00 - program sam znajdzie najbliższą Mszę.</p>
+</div>
+<script>
+"use strict";
+Amen.ustawAkcent();
+let edyt = -1;
+function rysuj() {
+  document.getElementById("parafia").textContent = Amen.parafia();
+  const n = Amen.najblizszaMsza(), t = Amen.teraz();
+  document.getElementById("kiedy").textContent = n ? `${n.kiedy ? "jutro" : "dziś"} o ${Amen.hm(n.godz)}` : "brak w planie";
+  document.getElementById("za").textContent = n ? (n.trwa ? "trwa teraz" : Amen.zaIle(n.za)) : "";
+  document.getElementById("uwaga").textContent = Amen.komentarzMszy(n);
+  const ms = Amen.msze(), dz = Amen.wczytaj ? (() => { const l = LIT.liturgia(t.r, t.m, t.d); return (t.dow === 0 || l.ranga <= LIT.R_UROCZ) ? 0 : t.dow === 6 ? 2 : 1; })() : 1;
+  document.getElementById("lista").innerHTML = ms.map((m, i) => i === edyt
+    ? `<div class="rzad"><b>${Amen.esc(m.etykieta)}</b><input class="pole godz" id="wej" value="${Amen.esc(m.godziny)}" maxlength="60"><button class="przycisk glowny" id="zapisz">Zapisz</button></div>`
+    : `<div class="rzad ${i === dz ? "dzis" : ""}"><b>${Amen.esc(m.etykieta)}</b><span class="godz">${Amen.esc(m.godziny)}</span><button class="przycisk" data-i="${i}">Zmień</button></div>`).join("");
+  document.querySelectorAll("[data-i]").forEach(b => b.onclick = () => { edyt = +b.dataset.i; rysuj(); });
+  const w = document.getElementById("wej");
+  if (w) {
+    w.focus(); w.select();
+    const zap = () => { const m = Amen.msze(); m[edyt].godziny = w.value.trim(); Amen.zapisz("msze", m); edyt = -1; rysuj(); };
+    document.getElementById("zapisz").onclick = zap;
+    w.onkeydown = e => { if (e.key === "Enter") zap(); if (e.key === "Escape") { edyt = -1; rysuj(); } };
+  }
+}
+rysuj();
+setInterval(() => { if (edyt < 0) rysuj(); }, 20000);
+Amen.naZmiane("msze", () => { if (edyt < 0) rysuj(); });
+</script>
+</body>
+</html>

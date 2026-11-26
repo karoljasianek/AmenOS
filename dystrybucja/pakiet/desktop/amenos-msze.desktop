@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Porządek Mszy
+Comment=Godziny Mszy i odliczanie do najbliższej
+Exec=amenos-app msze
+Icon=amenos-msze
+Terminal=false
+Categories=X-AmenOS-Parafia;Calendar;
+StartupWMClass=amenos-app

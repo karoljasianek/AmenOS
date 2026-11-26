@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Ogłoszenia parafialne
+Comment=Tablica korkowa z ogłoszeniami i wydrukiem
+Exec=amenos-app ogloszenia
+Icon=amenos-ogloszenia
+Terminal=false
+Categories=X-AmenOS-Parafia;Office;
+StartupWMClass=amenos-app

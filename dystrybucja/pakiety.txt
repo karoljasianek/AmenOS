@@ -1,0 +1,31 @@
+# Pakiety systemu AmenOS (instalowane do chroota razem z zalecanymi)
+# jądro i system na żywo
+linux-generic
+casper
+# pulpit Lubuntu (LXQt) i instalator
+lubuntu-desktop
+calamares-settings-lubuntu
+# rozruch BIOS + UEFI z Secure Boot
+grub-pc-bin
+grub-efi-amd64-bin
+grub-efi-amd64-signed
+shim-signed
+efibootmgr
+os-prober
+# język polski
+language-pack-pl
+language-pack-pl-base
+libreoffice-l10n-pl
+hunspell-pl
+hyphen-pl
+mythes-pl
+locales
+tzdata
+# przeglądarka (bez snapów) i środowisko aplikacji parafialnych
+falkon
+fonts-inter
+python3-pyqt6
+python3-pyqt6.qtwebengine
+# ekran startowy
+plymouth-label
+plymouth-theme-spinner

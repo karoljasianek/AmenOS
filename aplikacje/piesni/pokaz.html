@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Tablica pieśni - pokaz</title>
+<link rel="stylesheet" href="../wspolne/amenos.css">
+<link rel="stylesheet" href="tablica.css">
+<script src="../wspolne/dane.js"></script>
+<script src="../wspolne/liturgia.js"></script>
+<script src="../wspolne/amenos.js"></script>
+</head>
+<body class="pokaz">
+<div class="pas-lit" id="pas"></div>
+<div class="tablica" id="tablica"></div>
+<script>
+"use strict";
+/* Pokaz pieśni na rzutniku albo telewizorze (np. przez HDMI). Zmienia się sam, gdy ktoś
+   wpisze numery w programie "Tablica pieśni". Esc albo dwuklik zamyka pokaz. */
+function rysuj() {
+  const l = Amen.ustawAkcent(), p = Amen.piesni(), pas = document.getElementById("pas");
+  pas.textContent = l.nazwa;
+  pas.style.background = Amen.KOLOR_LIT[l.kolor];
+  pas.style.color = l.kolor === LIT.BIALY ? "#5A4A20" : "#fff";
+  document.getElementById("tablica").innerHTML = AMEN_DANE.piesniEtykiety.map((e, i) => `
+    <div class="rzad"><span class="etykieta">${e}</span><span class="karty">${p[i] ? [...p[i]].map(c => `<span class="karta-nr">${Amen.esc(c)}</span>`).join("") : '<span class="pusto">· · ·</span>'}</span></div>`).join("");
+}
+rysuj();
+Amen.naZmiane("piesni", rysuj);
+setInterval(rysuj, 60000);
+addEventListener("keydown", e => { if (e.key === "Escape") window.close(); });
+addEventListener("dblclick", () => window.close());
+</script>
+</body>
+</html>
